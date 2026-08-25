@@ -19,6 +19,8 @@ The current interactive dashboard includes:
 - A four-halo front view matching the physical left/right layout.
 - A transparent raster cutout of the supplied white 2013 Challenger front reference. A pixel-derived halo mask preserves the source rings' exact thin, partially occluded shape while allowing each lamp to be tinted independently. A headlamp-clipped color glow and subtly desaturated vehicle layer emphasize the live output without changing the ring geometry, while the original rough ground edge is replaced by an app-rendered soft shadow. Confirm redistribution rights for the supplied source image before publishing an APK or repository release.
 - Global and per-ring selection.
+- A full HSV color field, hue strip, and exact six-digit HEX input for choosing any RGB color.
+- An editable Favorites tab with up to 12 colors that can be saved from the picker, applied, or removed.
 - Favorite-color selection and brightness preview.
 - Animated Amber Chase, Demon Pulse, and Spectrum Wave demonstrations.
 - Summaries of the physical-button and vehicle-signal rules.

@@ -37,6 +37,16 @@
     <string name="color_cyan">Cyjan</string>
     <string name="color_green">Zielony</string>
     <string name="brightness">Jasność</string>
+    <string name="color_picker_tab">Kolor</string>
+    <string name="favorites_tab">Ulubione</string>
+    <string name="full_color_spectrum">PEŁNE SPEKTRUM KOLORÓW</string>
+    <string name="hex_color">Kolor HEX</string>
+    <string name="save_favorite">ZAPISZ</string>
+    <string name="favorite_saved">ZAPISANY</string>
+    <string name="your_favorites">Twoje ulubione</string>
+    <string name="favorite_editor_hint">Dotknij, aby ustawić; usuń niepotrzebne kolory</string>
+    <string name="remove_favorite">USUŃ</string>
+    <string name="choose_first_favorite">Wybierz kolor i zapisz pierwszy ulubiony</string>
 
     <string name="show_modes">Tryby pokazowe</string>
     <string name="parked_only">TYLKO NA POSTOJU</string>

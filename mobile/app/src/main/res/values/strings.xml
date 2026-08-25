@@ -37,6 +37,16 @@
     <string name="color_cyan">Cyan</string>
     <string name="color_green">Green</string>
     <string name="brightness">Brightness</string>
+    <string name="color_picker_tab">Color</string>
+    <string name="favorites_tab">Favorites</string>
+    <string name="full_color_spectrum">FULL COLOR SPECTRUM</string>
+    <string name="hex_color">HEX color</string>
+    <string name="save_favorite">SAVE</string>
+    <string name="favorite_saved">SAVED</string>
+    <string name="your_favorites">Your favorites</string>
+    <string name="favorite_editor_hint">Tap to apply; remove colors you no longer need</string>
+    <string name="remove_favorite">REMOVE</string>
+    <string name="choose_first_favorite">Choose a color and save your first favorite</string>
 
     <string name="show_modes">Show modes</string>
     <string name="parked_only">PARKED ONLY</string>

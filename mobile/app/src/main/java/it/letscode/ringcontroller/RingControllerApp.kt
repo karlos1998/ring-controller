@@ -100,11 +100,6 @@ private val AppColors = darkColorScheme(
     onSurface = AppText,
 )
 
-private data class FavoriteColor(
-    @param:StringRes val nameRes: Int,
-    val color: Color,
-)
-
 private enum class ScenePreset(
     @param:StringRes val titleRes: Int,
     @param:StringRes val subtitleRes: Int,
@@ -124,13 +119,13 @@ private enum class DashboardTab(
     Config(R.string.nav_config, R.string.nav_config_description),
 }
 
-private val favoriteColors = listOf(
-    FavoriteColor(R.string.color_ice, Color(0xFFF2F6FF)),
-    FavoriteColor(R.string.color_amber, Color(0xFFFF6A00)),
-    FavoriteColor(R.string.color_red, Color(0xFFFF304E)),
-    FavoriteColor(R.string.color_violet, Color(0xFFA855F7)),
-    FavoriteColor(R.string.color_cyan, AppCyan),
-    FavoriteColor(R.string.color_green, Color(0xFF43E07B)),
+private val defaultFavoriteColors = listOf(
+    Color(0xFFF2F6FF),
+    Color(0xFFFF6A00),
+    Color(0xFFFF304E),
+    Color(0xFFA855F7),
+    AppCyan,
+    Color(0xFF43E07B),
 )
 
 @Composable
@@ -143,6 +138,7 @@ fun RingControllerApp() {
     var activeScene by remember { mutableStateOf<ScenePreset?>(null) }
     var sceneStep by remember { mutableIntStateOf(0) }
     var vehicleAutomationEnabled by remember { mutableStateOf(true) }
+    var favoriteColors by remember { mutableStateOf(defaultFavoriteColors) }
 
     LaunchedEffect(activeScene, ringsEnabled) {
         sceneStep = 0
@@ -203,6 +199,15 @@ fun RingControllerApp() {
                     onPowerClick = { ringsEnabled = !ringsEnabled },
                     onTargetSelected = { selectedRing = it },
                     onColorSelected = ::applyFavorite,
+                    favoriteColors = favoriteColors,
+                    onFavoriteAdded = { color ->
+                        if (favoriteColors.size < 12 && favoriteColors.none { it.toHex() == color.toHex() }) {
+                            favoriteColors = favoriteColors + color
+                        }
+                    },
+                    onFavoriteRemoved = { index ->
+                        favoriteColors = favoriteColors.filterIndexed { itemIndex, _ -> itemIndex != index }
+                    },
                     onBrightnessChanged = { brightness = it },
                 )
 
@@ -242,6 +247,9 @@ private fun DriveScreen(
     onPowerClick: () -> Unit,
     onTargetSelected: (Int?) -> Unit,
     onColorSelected: (Color) -> Unit,
+    favoriteColors: List<Color>,
+    onFavoriteAdded: (Color) -> Unit,
+    onFavoriteRemoved: (Int) -> Unit,
     onBrightnessChanged: (Float) -> Unit,
 ) {
     ScreenColumn(modifier) {
@@ -258,11 +266,12 @@ private fun DriveScreen(
         }
         item { RingTargetSelector(selectedRing = selectedRing, onSelected = onTargetSelected) }
         item {
-            FavoritePalette(
-                colors = favoriteColors,
-                selectedColor = selectedRing?.let(ringColors::get)
-                    ?: ringColors.firstOrNull().takeIf { ringColors.distinct().size == 1 },
+            ColorControlPanel(
+                favorites = favoriteColors,
+                selectedColor = selectedRing?.let(ringColors::get) ?: ringColors.first(),
                 onColorSelected = onColorSelected,
+                onFavoriteAdded = onFavoriteAdded,
+                onFavoriteRemoved = onFavoriteRemoved,
             )
         }
         item { BrightnessControl(brightness, onBrightnessChanged) }
@@ -740,50 +749,6 @@ private fun TargetChip(
             color = if (selected) AppText else AppMuted,
             letterSpacing = 0.7.sp,
         )
-    }
-}
-
-@Composable
-private fun FavoritePalette(
-    colors: List<FavoriteColor>,
-    selectedColor: Color?,
-    onColorSelected: (Color) -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-        SectionHeader(stringResource(R.string.favorites), stringResource(R.string.tap_to_apply))
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(colors) { favorite ->
-                val name = stringResource(favorite.nameRes)
-                val applyDescription = stringResource(R.string.apply_color_description, name)
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(
-                        modifier = Modifier
-                            .size(46.dp)
-                            .shadow(
-                                elevation = if (selectedColor == favorite.color) 8.dp else 0.dp,
-                                shape = CircleShape,
-                                ambientColor = favorite.color,
-                                spotColor = favorite.color,
-                            )
-                            .background(favorite.color.copy(alpha = 0.14f), CircleShape)
-                            .border(
-                                width = if (selectedColor == favorite.color) 2.dp else 1.dp,
-                                color = if (selectedColor == favorite.color) Color.White else Color(0xFF3B414A),
-                                shape = CircleShape,
-                            )
-                            .semantics {
-                                contentDescription = applyDescription
-                                this.selected = selectedColor == favorite.color
-                            }
-                            .clickable { onColorSelected(favorite.color) }
-                            .padding(8.dp)
-                            .background(favorite.color, CircleShape),
-                    )
-                    Spacer(Modifier.height(5.dp))
-                    Text(name, color = AppMuted, fontSize = 9.sp)
-                }
-            }
-        }
     }
 }
 

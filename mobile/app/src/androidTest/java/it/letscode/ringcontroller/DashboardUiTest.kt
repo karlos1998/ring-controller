@@ -5,6 +5,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import org.junit.Rule
 import org.junit.Test
 
@@ -20,10 +21,11 @@ class DashboardUiTest {
             "Front view of a 2013 Dodge Challenger with four interactive halo rings",
         ).assertExists()
         composeRule.onNodeWithContentDescription("Ring 1").performClick()
-        composeRule.onNodeWithContentDescription("Apply Red").performClick()
+        composeRule.onNodeWithText("FAVORITES").performScrollTo().performClick()
+        composeRule.onNodeWithContentDescription("Apply #FF304E").performClick()
 
         composeRule.onNodeWithText("RING 1").assertExists()
-        composeRule.onNodeWithContentDescription("Apply Red").assertIsSelected()
+        composeRule.onNodeWithContentDescription("Apply #FF304E").assertIsSelected()
     }
 
     @Test

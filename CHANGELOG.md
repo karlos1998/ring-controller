@@ -11,5 +11,6 @@ All notable changes will be documented here.
 - Supplied white 2013 Challenger front cutout with interactive halo overlays aligned to the original headlamps and retained yellow outer lamp centers.
 - Pixel-accurate per-ring tint masks and a clean app-rendered vehicle shadow replace the oversized circular overlays and rough source-image ground edge.
 - Stronger headlamp-clipped ambient glows and a subtly desaturated vehicle layer make live ring colors easier to read without enlarging the ring artwork.
+- Full-spectrum HSV/HEX color picker and editable 12-slot favorite-color collection.
 - Hardware wiring and safety documentation.
 - Continuous integration and tagged APK release workflow.
