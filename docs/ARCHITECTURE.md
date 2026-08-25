@@ -17,9 +17,9 @@ flowchart LR
 ## Firmware layers
 
 1. **Hardware abstraction** — pin map, PWM polarity, debounced digital inputs.
-2. **Light engine** — RGB values, ring groups, effects, brightness, and cabin indication.
+2. **Light engine** — RGB values, ring groups, 20 built-in effects, eight persisted custom timelines, brightness, and cabin indication.
 3. **State machine** — user enable state, temporary overrides, and restoration behavior.
-4. **Configuration** — values persisted to ESP32 NVS.
+4. **Configuration** — values and executable custom-scene timelines persisted to ESP32 NVS; human-readable custom names/descriptions stay in Android preferences.
 5. **Transport** — versioned BLE GATT service with command writes and authoritative state notifications.
 
 Priority order for output decisions:
@@ -39,6 +39,8 @@ Default physical-button behavior is short press to turn on or advance to the nex
 3. Ring Controller domain models.
 4. BLE manager and protocol codec with scanning, reconnect, MTU negotiation, command throttling, and state synchronization.
 5. Local cache for UI convenience; ESP32 remains authoritative.
+
+Custom scenes use a small shared keyframe model: 2–12 cyclic moments, four RGB colors per moment, `150..5000` ms duration, and either smooth interpolation or a held jump. Android provides the editor and uploads definitions as a transactional `CUSTOM_BEGIN` / `CUSTOM_STEP` / `CUSTOM_COMMIT` sequence through its serialized GATT write queue. ESP32 validates the complete staging buffer before replacing an NVS slot, so a disconnected or partial upload cannot corrupt the previously saved scene.
 
 ## Release model
 

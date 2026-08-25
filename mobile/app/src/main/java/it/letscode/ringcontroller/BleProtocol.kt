@@ -14,6 +14,7 @@ internal data class ControllerSnapshot(
     val vehicleAutomationEnabled: Boolean,
     val ringColors: List<Color>,
     val favorites: List<Color>,
+    val customSceneSlot: Int?,
 )
 
 internal object BleProtocol {
@@ -44,6 +45,7 @@ internal object BleProtocol {
             vehicleAutomationEnabled = parts[8] == "1",
             ringColors = colors,
             favorites = favorites.take(12),
+            customSceneSlot = parts.getOrNull(11)?.toIntOrNull()?.takeIf { it in 0 until MAX_CUSTOM_SCENES },
         )
     }
 
@@ -59,4 +61,22 @@ internal object BleProtocol {
         "FAVORITES|${colors.take(12).joinToString(",") { it.toHex().drop(1) }}"
 
     fun vehicleAutomation(enabled: Boolean): String = "VEHICLE|${if (enabled) 1 else 0}"
+
+    fun customSceneUpload(scene: CustomScene, playAfterUpload: Boolean): List<String> {
+        val normalized = scene.normalized()
+        return buildList {
+            add("CUSTOM_BEGIN|${normalized.slot}|${normalized.moments.size}")
+            normalized.moments.forEachIndexed { index, moment ->
+                val colors = moment.colors.joinToString(",") { it.toHex().drop(1) }
+                add(
+                    "CUSTOM_STEP|${normalized.slot}|$index|${moment.durationMs}|" +
+                        "${moment.transition.protocolValue}|$colors",
+                )
+            }
+            add("CUSTOM_COMMIT|${normalized.slot}")
+            if (playAfterUpload) add("CUSTOM_PLAY|${normalized.slot}")
+        }
+    }
+
+    fun customSceneDelete(slot: Int): String = "CUSTOM_DELETE|${slot.coerceIn(0, MAX_CUSTOM_SCENES - 1)}"
 }

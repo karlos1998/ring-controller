@@ -10,6 +10,7 @@ import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
+import android.bluetooth.BluetoothStatusCodes
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
@@ -54,6 +55,8 @@ internal class RingBleManager(private val context: Context) {
     private var stateCharacteristic: BluetoothGattCharacteristic? = null
     private var scanning = false
     private var pendingCommand: String? = null
+    private val writeQueue = ArrayDeque<String>()
+    private var writeInFlight = false
     private val sendPendingCommand = Runnable {
         pendingCommand?.let(::writeCommandNow)
         pendingCommand = null
@@ -132,6 +135,12 @@ internal class RingBleManager(private val context: Context) {
 
     fun setVehicleAutomation(enabled: Boolean) =
         writeCommand(BleProtocol.vehicleAutomation(enabled), immediate = true)
+
+    fun uploadCustomScene(scene: CustomScene, playAfterUpload: Boolean) =
+        enqueueCommands(BleProtocol.customSceneUpload(scene, playAfterUpload))
+
+    fun deleteCustomScene(slot: Int) =
+        writeCommand(BleProtocol.customSceneDelete(slot), immediate = true)
 
     private val scanCallback = object : ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
@@ -212,6 +221,18 @@ internal class RingBleManager(private val context: Context) {
             finishConnection()
         }
 
+        override fun onCharacteristicWrite(
+            gatt: BluetoothGatt,
+            characteristic: BluetoothGattCharacteristic,
+            status: Int,
+        ) {
+            mainHandler.post {
+                if (writeQueue.isNotEmpty()) writeQueue.removeFirst()
+                writeInFlight = false
+                drainWriteQueue()
+            }
+        }
+
         @Deprecated("Deprecated in Android 13")
         override fun onCharacteristicChanged(
             gatt: BluetoothGatt,
@@ -254,15 +275,36 @@ internal class RingBleManager(private val context: Context) {
     }
 
     private fun writeCommandNow(command: String) {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            mainHandler.post { writeCommandNow(command) }
+            return
+        }
+        writeQueue.addLast(command)
+        drainWriteQueue()
+    }
+
+    private fun enqueueCommands(commands: List<String>) {
+        mainHandler.removeCallbacks(sendPendingCommand)
+        pendingCommand = null
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            mainHandler.post { enqueueCommands(commands) }
+            return
+        }
+        commands.forEach(writeQueue::addLast)
+        drainWriteQueue()
+    }
+
+    private fun drainWriteQueue() {
+        if (writeInFlight || writeQueue.isEmpty()) return
         val gatt = bluetoothGatt ?: return
         val characteristic = commandCharacteristic ?: return
-        val bytes = command.toByteArray(Charsets.UTF_8)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        val bytes = writeQueue.first().toByteArray(Charsets.UTF_8)
+        val accepted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             gatt.writeCharacteristic(
                 characteristic,
                 bytes,
                 BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT,
-            )
+            ) == BluetoothStatusCodes.SUCCESS
         } else {
             @Suppress("DEPRECATION")
             characteristic.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
@@ -270,6 +312,11 @@ internal class RingBleManager(private val context: Context) {
             characteristic.value = bytes
             @Suppress("DEPRECATION")
             gatt.writeCharacteristic(characteristic)
+        }
+        if (accepted) {
+            writeInFlight = true
+        } else {
+            mainHandler.postDelayed(::drainWriteQueue, 80)
         }
     }
 
@@ -287,6 +334,8 @@ internal class RingBleManager(private val context: Context) {
         gatt?.close()
         commandCharacteristic = null
         stateCharacteristic = null
+        writeQueue.clear()
+        writeInFlight = false
     }
 
     private fun updateConnectionState(state: BleConnectionState) {

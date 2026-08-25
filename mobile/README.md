@@ -23,8 +23,9 @@ The current interactive dashboard includes:
 - An editable Favorites tab with up to 12 colors that can be saved from the picker, applied, or removed.
 - One full-screen color studio keeps drag gestures away from the Drive screen and combines color, favorites, and brightness in a single staged edit. Its upper live preview reflects all changes—including visible glow intensity—and Cancel discards them without sending BLE commands; Save commits them to the controller.
 - Scene previews are calculated from elapsed time and synchronized to display frames for smooth 30+ FPS motion instead of coarse timer steps.
+- A localized Scene Studio creates, names, describes, previews, edits, reorders, duplicates, and deletes up to eight custom scenes above the built-in library. Each loop contains 2–12 moments with four ring colors, timing, and smooth/jump transitions; executable data is uploaded to ESP32 while names and descriptions persist locally.
 - Automatic BLE discovery for `D4WID-Ring`, persistent connection status in the header, and a detailed status card with firmware version.
-- Bidirectional protocol-1.0 synchronization: app changes are sent to the controller, while reconnects and physical input changes refresh power, colors, brightness, scene, favorites, and vehicle state from ESP32.
+- Bidirectional protocol-1.1 synchronization: a queued GATT writer safely uploads multi-command custom scenes, while reconnects and physical input changes refresh power, colors, brightness, built-in/custom scene, favorites, and vehicle state from ESP32.
 - A compact Drive card opens the combined color-and-brightness studio instead of embedding gesture-heavy controls in the scrolling page.
 - A categorized library of 20 signal, everyday, and show scenes, with frame-synchronized previews and stable BLE IDs shared with firmware. The Favorite Carousel follows the editable saved palette.
 - Summaries of the physical-button and vehicle-signal rules.

@@ -17,8 +17,8 @@ namespace {
 using ringcontroller::pins::RgbPins;
 
 constexpr char kDeviceName[] = "D4WID-Ring";
-constexpr char kFirmwareVersion[] = "0.3.0";
-constexpr char kProtocolVersion[] = "1.0";
+constexpr char kFirmwareVersion[] = "0.4.0";
+constexpr char kProtocolVersion[] = "1.1";
 constexpr char kServiceUuid[] = "7d2f0001-9c5a-4f28-b4d7-4b3a6d9a0001";
 constexpr char kCommandUuid[] = "7d2f0002-9c5a-4f28-b4d7-4b3a6d9a0001";
 constexpr char kStateUuid[] = "7d2f0003-9c5a-4f28-b4d7-4b3a6d9a0001";
@@ -34,7 +34,12 @@ constexpr uint32_t kButtonLongPressMs = 850;
 constexpr uint32_t kVehicleSignalDebounceMs = 250;
 constexpr uint32_t kRenderIntervalMs = 15;
 constexpr size_t kMaximumFavorites = 12;
+constexpr size_t kMaximumCustomScenes = 8;
+constexpr size_t kMaximumCustomMoments = 12;
+constexpr uint16_t kMinimumCustomMomentDurationMs = 150;
+constexpr uint16_t kMaximumCustomMomentDurationMs = 5000;
 constexpr int8_t kNoScene = -1;
+constexpr int8_t kNoCustomScene = -1;
 
 enum class Scene : int8_t {
     AmberChase = 0,
@@ -65,6 +70,22 @@ struct RgbColor {
     uint8_t red;
     uint8_t green;
     uint8_t blue;
+};
+
+enum class CustomTransition : uint8_t {
+    Jump = 0,
+    Smooth = 1,
+};
+
+struct CustomMoment {
+    std::array<RgbColor, 4> colors;
+    uint16_t durationMs;
+    CustomTransition transition;
+};
+
+struct CustomSceneData {
+    uint8_t momentCount;
+    std::array<CustomMoment, kMaximumCustomMoments> moments;
 };
 
 constexpr std::array<RgbColor, 6> kDefaultFavoriteColors{{
@@ -125,10 +146,15 @@ uint8_t globalBrightness = 224;
 uint8_t favoriteColorIndex = 1;
 uint8_t favoriteCount = kDefaultFavoriteColors.size();
 int8_t activeScene = kNoScene;
+int8_t activeCustomScene = kNoCustomScene;
 std::array<RgbColor, 4> ringColors{{
     {0, 229, 229}, {0, 229, 229}, {0, 229, 229}, {0, 229, 229},
 }};
 std::array<RgbColor, kMaximumFavorites> favoriteColors{};
+std::array<CustomSceneData, kMaximumCustomScenes> customScenes{};
+CustomSceneData customUpload{};
+int8_t customUploadSlot = kNoCustomScene;
+uint16_t customUploadMask = 0;
 
 uint32_t lastRenderMs = 0;
 uint32_t sceneStartedAtMs = 0;
@@ -395,11 +421,47 @@ std::array<RgbColor, 4> sceneColors(const uint32_t nowMs) {
     return colors;
 }
 
+std::array<RgbColor, 4> customSceneColors(const uint32_t nowMs) {
+    std::array<RgbColor, 4> colors{};
+    if (activeCustomScene < 0 || activeCustomScene >= static_cast<int8_t>(customScenes.size())) return colors;
+    const CustomSceneData &scene = customScenes[activeCustomScene];
+    if (scene.momentCount < 2 || scene.momentCount > kMaximumCustomMoments) return colors;
+
+    uint32_t totalDurationMs = 0;
+    for (uint8_t index = 0; index < scene.momentCount; ++index) {
+        totalDurationMs += scene.moments[index].durationMs;
+    }
+    if (totalDurationMs == 0) return colors;
+
+    uint32_t elapsedMs = (nowMs - sceneStartedAtMs) % totalDurationMs;
+    uint8_t currentIndex = 0;
+    while (
+        currentIndex + 1 < scene.momentCount &&
+        elapsedMs >= scene.moments[currentIndex].durationMs
+    ) {
+        elapsedMs -= scene.moments[currentIndex].durationMs;
+        ++currentIndex;
+    }
+    const CustomMoment &current = scene.moments[currentIndex];
+    if (current.transition == CustomTransition::Jump) return current.colors;
+
+    const CustomMoment &next = scene.moments[(currentIndex + 1) % scene.momentCount];
+    const float progress = smoothProgress(
+        static_cast<float>(elapsedMs) / static_cast<float>(current.durationMs)
+    );
+    for (size_t ring = 0; ring < colors.size(); ++ring) {
+        colors[ring] = blendSceneColors(current.colors[ring], next.colors[ring], progress);
+    }
+    return colors;
+}
+
 void renderOutputs(const uint32_t nowMs) {
     if (vehicleAutomationEnabled && vehicleSignalInput.isActive()) {
         applyAllRings({forcedWhiteBrightness, forcedWhiteBrightness, forcedWhiteBrightness});
     } else if (!userEnabled) {
         applyAllRings({0, 0, 0});
+    } else if (activeCustomScene != kNoCustomScene) {
+        applyRenderedColors(customSceneColors(nowMs));
     } else if (activeScene != kNoScene) {
         applyRenderedColors(sceneColors(nowMs));
     } else {
@@ -426,6 +488,23 @@ bool parseHexColor(const String &value, RgbColor &color) {
     return true;
 }
 
+bool parseRingColors(const String &payload, std::array<RgbColor, 4> &colors) {
+    int start = 0;
+    for (size_t index = 0; index < colors.size(); ++index) {
+        const int end = payload.indexOf(',', start);
+        const String value = end < 0 ? payload.substring(start) : payload.substring(start, end);
+        if (!parseHexColor(value, colors[index])) return false;
+        if (index + 1 < colors.size() && end < 0) return false;
+        if (index + 1 == colors.size() && end >= 0) return false;
+        start = end + 1;
+    }
+    return true;
+}
+
+String customSceneKey(const uint8_t slot) {
+    return String("custom-") + String(slot);
+}
+
 String fieldAt(const String &message, const int index) {
     int start = 0;
     for (int current = 0; current <= index; ++current) {
@@ -441,6 +520,7 @@ void persistLightState() {
     preferences.putBool("enabled", userEnabled);
     preferences.putUChar("brightness", globalBrightness);
     preferences.putChar("scene", activeScene);
+    preferences.putChar("custom", activeCustomScene);
     preferences.putBytes("colors", ringColors.data(), sizeof(ringColors));
 }
 
@@ -482,6 +562,8 @@ String buildControllerState() {
         if (index > 0) state += ',';
         state += colorHex(favoriteColors[index]);
     }
+    state += '|';
+    state += String(static_cast<int>(activeCustomScene));
     return state;
 }
 
@@ -495,8 +577,16 @@ void publishControllerState() {
 
 void selectScene(const int8_t scene) {
     activeScene = scene;
+    activeCustomScene = kNoCustomScene;
     sceneStartedAtMs = millis();
     if (scene != kNoScene) userEnabled = true;
+}
+
+void selectCustomScene(const int8_t slot) {
+    activeScene = kNoScene;
+    activeCustomScene = slot;
+    sceneStartedAtMs = millis();
+    if (slot != kNoCustomScene) userEnabled = true;
 }
 
 void applyFavoriteToRings(const uint8_t index) {
@@ -522,6 +612,65 @@ void setFavoritesFromCommand(const String &payload) {
         favoriteColorIndex %= favoriteCount;
         persistFavorites();
     }
+}
+
+bool customSceneSlotValid(const int slot) {
+    return slot >= 0 && slot < static_cast<int>(kMaximumCustomScenes);
+}
+
+void beginCustomSceneUpload(const int slot, const int momentCount) {
+    if (!customSceneSlotValid(slot) || momentCount < 2 || momentCount > static_cast<int>(kMaximumCustomMoments)) {
+        customUploadSlot = kNoCustomScene;
+        customUploadMask = 0;
+        return;
+    }
+    customUpload = {};
+    customUpload.momentCount = static_cast<uint8_t>(momentCount);
+    customUploadSlot = static_cast<int8_t>(slot);
+    customUploadMask = 0;
+}
+
+void setCustomSceneUploadMoment(
+    const int slot,
+    const int index,
+    const int durationMs,
+    const int transition,
+    const String &colorsPayload
+) {
+    if (
+        slot != customUploadSlot || index < 0 || index >= customUpload.momentCount ||
+        durationMs < kMinimumCustomMomentDurationMs || durationMs > kMaximumCustomMomentDurationMs ||
+        (transition != static_cast<int>(CustomTransition::Jump) &&
+         transition != static_cast<int>(CustomTransition::Smooth))
+    ) return;
+
+    CustomMoment moment{};
+    if (!parseRingColors(colorsPayload, moment.colors)) return;
+    moment.durationMs = static_cast<uint16_t>(durationMs);
+    moment.transition = static_cast<CustomTransition>(transition);
+    customUpload.moments[index] = moment;
+    customUploadMask |= static_cast<uint16_t>(1U << index);
+}
+
+bool commitCustomSceneUpload(const int slot) {
+    if (slot != customUploadSlot || customUpload.momentCount < 2) return false;
+    const uint16_t expectedMask = static_cast<uint16_t>((1U << customUpload.momentCount) - 1U);
+    if (customUploadMask != expectedMask) return false;
+
+    customScenes[slot] = customUpload;
+    const String key = customSceneKey(static_cast<uint8_t>(slot));
+    preferences.putBytes(key.c_str(), &customScenes[slot], sizeof(CustomSceneData));
+    customUploadSlot = kNoCustomScene;
+    customUploadMask = 0;
+    return true;
+}
+
+void deleteCustomScene(const int slot) {
+    if (!customSceneSlotValid(slot)) return;
+    customScenes[slot] = {};
+    const String key = customSceneKey(static_cast<uint8_t>(slot));
+    preferences.remove(key.c_str());
+    if (activeCustomScene == slot) selectCustomScene(kNoCustomScene);
 }
 
 void handleBleCommand(String message) {
@@ -556,6 +705,27 @@ void handleBleCommand(String message) {
     } else if (command == "VEHICLE") {
         vehicleAutomationEnabled = fieldAt(message, 1).toInt() != 0;
         preferences.putBool("veh-auto", vehicleAutomationEnabled);
+    } else if (command == "CUSTOM_BEGIN") {
+        beginCustomSceneUpload(fieldAt(message, 1).toInt(), fieldAt(message, 2).toInt());
+    } else if (command == "CUSTOM_STEP") {
+        setCustomSceneUploadMoment(
+            fieldAt(message, 1).toInt(),
+            fieldAt(message, 2).toInt(),
+            fieldAt(message, 3).toInt(),
+            fieldAt(message, 4).toInt(),
+            fieldAt(message, 5)
+        );
+    } else if (command == "CUSTOM_COMMIT") {
+        commitCustomSceneUpload(fieldAt(message, 1).toInt());
+    } else if (command == "CUSTOM_PLAY") {
+        const int slot = fieldAt(message, 1).toInt();
+        if (customSceneSlotValid(slot) && customScenes[slot].momentCount >= 2) {
+            selectCustomScene(static_cast<int8_t>(slot));
+            scheduleLightStatePersistence();
+        }
+    } else if (command == "CUSTOM_DELETE") {
+        deleteCustomScene(fieldAt(message, 1).toInt());
+        scheduleLightStatePersistence();
     } else {
         Serial.printf("Unsupported BLE command: %s\n", message.c_str());
         return;
@@ -620,6 +790,32 @@ void loadConfiguration() {
     globalBrightness = preferences.getUChar("brightness", 224);
     activeScene = preferences.getChar("scene", kNoScene);
     if (activeScene < kNoScene || activeScene > kMaximumSceneId) activeScene = kNoScene;
+
+    customScenes.fill({});
+    for (uint8_t slot = 0; slot < kMaximumCustomScenes; ++slot) {
+        const String key = customSceneKey(slot);
+        if (preferences.getBytesLength(key.c_str()) != sizeof(CustomSceneData)) continue;
+        preferences.getBytes(key.c_str(), &customScenes[slot], sizeof(CustomSceneData));
+        CustomSceneData &scene = customScenes[slot];
+        bool valid = scene.momentCount >= 2 && scene.momentCount <= kMaximumCustomMoments;
+        for (uint8_t index = 0; valid && index < scene.momentCount; ++index) {
+            const CustomMoment &moment = scene.moments[index];
+            valid = moment.durationMs >= kMinimumCustomMomentDurationMs &&
+                moment.durationMs <= kMaximumCustomMomentDurationMs &&
+                (moment.transition == CustomTransition::Jump ||
+                 moment.transition == CustomTransition::Smooth);
+        }
+        if (!valid) scene = {};
+    }
+    activeCustomScene = preferences.getChar("custom", kNoCustomScene);
+    if (
+        activeCustomScene < 0 || activeCustomScene >= static_cast<int8_t>(customScenes.size()) ||
+        customScenes[activeCustomScene].momentCount < 2
+    ) {
+        activeCustomScene = kNoCustomScene;
+    } else {
+        activeScene = kNoScene;
+    }
 
     if (preferences.getBytesLength("colors") == sizeof(ringColors)) {
         preferences.getBytes("colors", ringColors.data(), sizeof(ringColors));

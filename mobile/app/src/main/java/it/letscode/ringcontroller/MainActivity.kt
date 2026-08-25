@@ -29,8 +29,14 @@ class MainActivity : ComponentActivity() {
             RingControllerApp(
                 bleManager = bleManager,
                 initialSimplifiedPreview = appPreferences.getBoolean("simplified_preview", false),
+                initialCustomScenes = CustomSceneJson.decode(appPreferences.getString("custom_scenes", null)),
                 onSimplifiedPreviewChanged = { enabled ->
                     appPreferences.edit().putBoolean("simplified_preview", enabled).apply()
+                },
+                onCustomScenesChanged = { scenes ->
+                    appPreferences.edit()
+                        .putString("custom_scenes", CustomSceneJson.encode(scenes))
+                        .apply()
                 },
             )
         }

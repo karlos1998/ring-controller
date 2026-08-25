@@ -65,6 +65,7 @@ internal fun ColorControlPanel(
     onColorSelected: (Color) -> Unit,
     onFavoriteAdded: (Color) -> Unit,
     onFavoriteRemoved: (Int) -> Unit,
+    favoritesEditable: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     var currentTab by remember { mutableStateOf(ColorPanelTab.Picker) }
@@ -85,6 +86,7 @@ internal fun ColorControlPanel(
                 isFavorite = favorites.any { it.rgbEquals(selectedColor) },
                 onColorChanged = onColorSelected,
                 onFavoriteAdded = onFavoriteAdded,
+                showFavoriteAction = favoritesEditable,
             )
 
             ColorPanelTab.Favorites -> FavoriteEditor(
@@ -93,6 +95,7 @@ internal fun ColorControlPanel(
                 onColorSelected = onColorSelected,
                 onFavoriteRemoved = onFavoriteRemoved,
                 onOpenPicker = { currentTab = ColorPanelTab.Picker },
+                favoritesEditable = favoritesEditable,
             )
         }
     }
@@ -151,6 +154,7 @@ private fun FullColorPicker(
     isFavorite: Boolean,
     onColorChanged: (Color) -> Unit,
     onFavoriteAdded: (Color) -> Unit,
+    showFavoriteAction: Boolean,
 ) {
     val hsv = color.toHsv()
 
@@ -179,34 +183,36 @@ private fun FullColorPicker(
             },
         )
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(color, RoundedCornerShape(12.dp))
-                    .border(2.dp, Color.White.copy(alpha = 0.84f), RoundedCornerShape(12.dp)),
-            )
-            Button(
-                onClick = { onFavoriteAdded(color) },
-                enabled = !isFavorite,
-                modifier = Modifier.weight(1f).height(48.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = PickerOrange,
-                    contentColor = Color.Black,
-                    disabledContainerColor = Color(0xFF30343B),
-                    disabledContentColor = PickerMuted,
-                ),
+        if (showFavoriteAction) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Text(
-                    text = stringResource(if (isFavorite) R.string.favorite_added else R.string.add_favorite),
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Black,
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(color, RoundedCornerShape(12.dp))
+                        .border(2.dp, Color.White.copy(alpha = 0.84f), RoundedCornerShape(12.dp)),
                 )
+                Button(
+                    onClick = { onFavoriteAdded(color) },
+                    enabled = !isFavorite,
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PickerOrange,
+                        contentColor = Color.Black,
+                        disabledContainerColor = Color(0xFF30343B),
+                        disabledContentColor = PickerMuted,
+                    ),
+                ) {
+                    Text(
+                        text = stringResource(if (isFavorite) R.string.favorite_added else R.string.add_favorite),
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Black,
+                    )
+                }
             }
         }
     }
@@ -311,6 +317,7 @@ private fun FavoriteEditor(
     onColorSelected: (Color) -> Unit,
     onFavoriteRemoved: (Int) -> Unit,
     onOpenPicker: () -> Unit,
+    favoritesEditable: Boolean,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -362,7 +369,7 @@ private fun FavoriteEditor(
                                 .background(favorite, CircleShape),
                         )
                         Spacer(Modifier.height(4.dp))
-                        if (favorites.size > 1) {
+                        if (favoritesEditable && favorites.size > 1) {
                             Text(
                                 text = stringResource(R.string.remove_favorite),
                                 modifier = Modifier.clickable { onFavoriteRemoved(index) }.padding(3.dp),

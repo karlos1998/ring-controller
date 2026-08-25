@@ -31,6 +31,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -42,6 +43,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -125,7 +127,9 @@ private val defaultFavoriteColors = listOf(
 internal fun RingControllerApp(
     bleManager: RingBleManager? = null,
     initialSimplifiedPreview: Boolean = false,
+    initialCustomScenes: List<CustomScene> = emptyList(),
     onSimplifiedPreviewChanged: (Boolean) -> Unit = {},
+    onCustomScenesChanged: (List<CustomScene>) -> Unit = {},
 ) {
     val connectionState = bleManager?.connectionState ?: BleConnectionState.LocalDemo
     val controllerSnapshot = bleManager?.snapshot
@@ -136,6 +140,8 @@ internal fun RingControllerApp(
     var solidRingColors by remember { mutableStateOf(ringColors) }
     var brightness by remember { mutableFloatStateOf(0.88f) }
     var activeScene by remember { mutableStateOf<ScenePreset?>(null) }
+    var activeCustomSceneSlot by remember { mutableStateOf<Int?>(null) }
+    var customScenes by remember { mutableStateOf(initialCustomScenes) }
     var vehicleAutomationEnabled by remember { mutableStateOf(true) }
     var favoriteColors by remember { mutableStateOf(defaultFavoriteColors) }
     var simplifiedPreview by rememberSaveable { mutableStateOf(initialSimplifiedPreview) }
@@ -143,6 +149,9 @@ internal fun RingControllerApp(
     var draftRingColors by remember { mutableStateOf(ringColors) }
     var draftFavorites by remember { mutableStateOf(favoriteColors) }
     var draftBrightness by remember { mutableFloatStateOf(brightness) }
+    var customSceneEditor by remember { mutableStateOf<CustomScene?>(null) }
+    var customSceneEditorIsNew by remember { mutableStateOf(false) }
+    var customScenePendingDelete by remember { mutableStateOf<CustomScene?>(null) }
 
     LaunchedEffect(controllerSnapshot) {
         val controller = controllerSnapshot ?: return@LaunchedEffect
@@ -150,6 +159,7 @@ internal fun RingControllerApp(
         brightness = controller.brightness / 255f
         activeScene = if (controller.vehicleOverrideActive) null
         else controller.scene?.let(ScenePreset::fromId)
+        activeCustomSceneSlot = if (controller.vehicleOverrideActive) null else controller.customSceneSlot
         solidRingColors = controller.ringColors
         ringColors = if (controller.vehicleOverrideActive) List(4) { Color.White }
         else controller.ringColors
@@ -157,15 +167,21 @@ internal fun RingControllerApp(
         if (controller.favorites.isNotEmpty()) favoriteColors = controller.favorites
     }
 
-    LaunchedEffect(activeScene, ringsEnabled, favoriteColors) {
-        val scene = activeScene ?: return@LaunchedEffect
+    LaunchedEffect(activeScene, activeCustomSceneSlot, customScenes, ringsEnabled, favoriteColors) {
+        val builtInScene = activeScene
+        val customScene = activeCustomSceneSlot?.let { slot -> customScenes.firstOrNull { it.slot == slot } }
+        if (builtInScene == null && customScene == null) return@LaunchedEffect
         if (!ringsEnabled) return@LaunchedEffect
         var startedAtNanos = 0L
-        while (activeScene == scene && ringsEnabled) {
+        while (ringsEnabled) {
             withFrameNanos { frameTimeNanos ->
                 if (startedAtNanos == 0L) startedAtNanos = frameTimeNanos
                 val elapsedSeconds = (frameTimeNanos - startedAtNanos) / 1_000_000_000f
-                ringColors = colorsForScene(scene, elapsedSeconds, favoriteColors)
+                ringColors = if (customScene != null) {
+                    colorsForCustomScene(customScene, elapsedSeconds)
+                } else {
+                    colorsForScene(builtInScene!!, elapsedSeconds, favoriteColors)
+                }
             }
         }
     }
@@ -188,6 +204,8 @@ internal fun RingControllerApp(
                     selectedRing = selectedRing,
                     brightness = brightness,
                     activeScene = activeScene,
+                    activeCustomSceneName = activeCustomSceneSlot
+                        ?.let { slot -> customScenes.firstOrNull { it.slot == slot }?.name },
                     connectionState = connectionState,
                     simplifiedPreview = simplifiedPreview,
                     onRingSelected = { selectedRing = it },
@@ -211,18 +229,40 @@ internal fun RingControllerApp(
                     selectedRing = selectedRing,
                     brightness = brightness,
                     activeScene = activeScene,
+                    activeCustomSceneSlot = activeCustomSceneSlot,
+                    customScenes = customScenes,
                     favoriteColors = favoriteColors,
                     connectionState = connectionState,
                     simplifiedPreview = simplifiedPreview,
                     onRingSelected = { selectedRing = it },
                     onSceneSelected = { scene ->
-                        if (activeScene == null) solidRingColors = ringColors
+                        if (activeScene == null && activeCustomSceneSlot == null) solidRingColors = ringColors
                         activeScene = scene
+                        activeCustomSceneSlot = null
                         ringsEnabled = true
                         bleManager?.setScene(scene.id)
                     },
+                    onCustomSceneSelected = { scene ->
+                        if (activeScene == null && activeCustomSceneSlot == null) solidRingColors = ringColors
+                        activeScene = null
+                        activeCustomSceneSlot = scene.slot
+                        ringsEnabled = true
+                        bleManager?.uploadCustomScene(scene, playAfterUpload = true)
+                    },
+                    onCreateCustomScene = {
+                        nextCustomSceneSlot(customScenes)?.let { slot ->
+                            customSceneEditor = CustomScene.create(slot, solidRingColors)
+                            customSceneEditorIsNew = true
+                        }
+                    },
+                    onEditCustomScene = { scene ->
+                        customSceneEditor = scene
+                        customSceneEditorIsNew = false
+                    },
+                    onDeleteCustomScene = { customScenePendingDelete = it },
                     onStopScene = {
                         activeScene = null
+                        activeCustomSceneSlot = null
                         ringColors = solidRingColors
                         bleManager?.setScene(null)
                     },
@@ -282,6 +322,7 @@ internal fun RingControllerApp(
                     val favoritesChanged = draftFavorites.map(Color::toHex) != favoriteColors.map(Color::toHex)
                     if (activeScene != null) bleManager?.setScene(null)
                     activeScene = null
+                    activeCustomSceneSlot = null
                     ringColors = draftRingColors
                     solidRingColors = draftRingColors
                     favoriteColors = draftFavorites
@@ -293,10 +334,64 @@ internal fun RingControllerApp(
                 },
             )
         }
+
+        customSceneEditor?.let { scene ->
+            CustomSceneEditorDialog(
+                initialScene = scene,
+                favoriteColors = favoriteColors,
+                brightness = brightness,
+                simplifiedPreview = simplifiedPreview,
+                isNew = customSceneEditorIsNew,
+                onCancel = { customSceneEditor = null },
+                onSave = { saved ->
+                    val normalized = saved.normalized()
+                    val updatedScenes = (customScenes.filterNot { it.slot == normalized.slot } + normalized)
+                        .sortedBy(CustomScene::slot)
+                    customScenes = updatedScenes
+                    onCustomScenesChanged(updatedScenes)
+                    bleManager?.uploadCustomScene(
+                        normalized,
+                        playAfterUpload = activeCustomSceneSlot == normalized.slot,
+                    )
+                    customSceneEditor = null
+                },
+            )
+        }
+
+        customScenePendingDelete?.let { scene ->
+            AlertDialog(
+                onDismissRequest = { customScenePendingDelete = null },
+                title = { Text(stringResource(R.string.delete_scene_title)) },
+                text = { Text(stringResource(R.string.delete_scene_message, scene.name)) },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            if (activeCustomSceneSlot == scene.slot) {
+                                activeCustomSceneSlot = null
+                                ringColors = solidRingColors
+                                bleManager?.setScene(null)
+                            }
+                            val updatedScenes = customScenes.filterNot { it.slot == scene.slot }
+                            customScenes = updatedScenes
+                            onCustomScenesChanged(updatedScenes)
+                            bleManager?.deleteCustomScene(scene.slot)
+                            customScenePendingDelete = null
+                        },
+                    ) {
+                        Text(stringResource(R.string.delete_action), color = Color(0xFFFF6B78))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { customScenePendingDelete = null }) {
+                        Text(stringResource(R.string.cancel_action))
+                    }
+                },
+            )
+        }
     }
 }
 
-private fun Color.scaledBy(brightness: Float): Color {
+internal fun Color.scaledBy(brightness: Float): Color {
     val level = brightness.coerceIn(0f, 1f)
     return Color(red * level, green * level, blue * level, alpha)
 }
@@ -309,6 +404,7 @@ private fun DriveScreen(
     selectedRing: Int?,
     brightness: Float,
     activeScene: ScenePreset?,
+    activeCustomSceneName: String?,
     connectionState: BleConnectionState,
     simplifiedPreview: Boolean,
     onRingSelected: (Int) -> Unit,
@@ -324,6 +420,7 @@ private fun DriveScreen(
                 colors = ringColors,
                 selectedRing = selectedRing,
                 activeScene = activeScene,
+                activeCustomSceneName = activeCustomSceneName,
                 brightness = brightness,
                 simplifiedPreview = simplifiedPreview,
                 onRingSelected = onRingSelected,
@@ -343,13 +440,20 @@ private fun ScenesScreen(
     selectedRing: Int?,
     brightness: Float,
     activeScene: ScenePreset?,
+    activeCustomSceneSlot: Int?,
+    customScenes: List<CustomScene>,
     favoriteColors: List<Color>,
     connectionState: BleConnectionState,
     simplifiedPreview: Boolean,
     onRingSelected: (Int) -> Unit,
     onSceneSelected: (ScenePreset) -> Unit,
+    onCustomSceneSelected: (CustomScene) -> Unit,
+    onCreateCustomScene: () -> Unit,
+    onEditCustomScene: (CustomScene) -> Unit,
+    onDeleteCustomScene: (CustomScene) -> Unit,
     onStopScene: () -> Unit,
 ) {
+    val activeCustomScene = activeCustomSceneSlot?.let { slot -> customScenes.firstOrNull { it.slot == slot } }
     ScreenColumn(modifier) {
         item { AppHeader(sectionRes = R.string.nav_scenes, connectionState = connectionState) }
         item {
@@ -358,6 +462,7 @@ private fun ScenesScreen(
                 colors = ringColors,
                 selectedRing = selectedRing,
                 activeScene = activeScene,
+                activeCustomSceneName = activeCustomScene?.name,
                 brightness = brightness,
                 simplifiedPreview = simplifiedPreview,
                 onRingSelected = onRingSelected,
@@ -368,6 +473,26 @@ private fun ScenesScreen(
                 title = stringResource(R.string.show_modes),
                 trailing = stringResource(R.string.parked_only),
             )
+        }
+        item {
+            CustomScenesHeader(
+                sceneCount = customScenes.size,
+                canAdd = customScenes.size < MAX_CUSTOM_SCENES,
+                onCreate = onCreateCustomScene,
+            )
+        }
+        if (customScenes.isEmpty()) {
+            item { EmptyCustomScenesCard(onCreate = onCreateCustomScene) }
+        } else {
+            items(customScenes, key = { "custom-${it.slot}" }) { scene ->
+                CustomSceneCard(
+                    scene = scene,
+                    selected = scene.slot == activeCustomSceneSlot,
+                    onPlay = { onCustomSceneSelected(scene) },
+                    onEdit = { onEditCustomScene(scene) },
+                    onDelete = { onDeleteCustomScene(scene) },
+                )
+            }
         }
         SceneCategory.entries.forEach { category ->
             val scenes = ScenePreset.entries.filter { it.category == category }
@@ -381,7 +506,7 @@ private fun ScenesScreen(
                 )
             }
         }
-        if (activeScene != null) {
+        if (activeScene != null || activeCustomSceneSlot != null) {
             item {
                 Button(
                     onClick = onStopScene,
@@ -523,6 +648,7 @@ private fun HaloDashboard(
     colors: List<Color>,
     selectedRing: Int?,
     activeScene: ScenePreset?,
+    activeCustomSceneName: String?,
     brightness: Float,
     simplifiedPreview: Boolean,
     onRingSelected: (Int) -> Unit,
@@ -543,12 +669,13 @@ private fun HaloDashboard(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = activeScene?.let { stringResource(it.titleRes).uppercase() }
+                        text = activeCustomSceneName?.uppercase()
+                            ?: activeScene?.let { stringResource(it.titleRes).uppercase() }
                             ?: stringResource(R.string.live_halos),
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 1.5.sp,
-                        color = if (activeScene != null) AppOrange else AppMuted,
+                        color = if (activeScene != null || activeCustomSceneName != null) AppOrange else AppMuted,
                     )
                     Text(
                         text = if (enabled) stringResource(R.string.tap_halo_hint)
@@ -601,6 +728,7 @@ private fun CompactCarPreview(
     colors: List<Color>,
     selectedRing: Int?,
     activeScene: ScenePreset?,
+    activeCustomSceneName: String?,
     brightness: Float,
     simplifiedPreview: Boolean,
     onRingSelected: (Int) -> Unit,
@@ -618,10 +746,11 @@ private fun CompactCarPreview(
             ChallengerFrontPreview(enabled, colors, selectedRing, brightness, onRingSelected)
         }
         Text(
-            text = activeScene?.let { stringResource(R.string.scene_running, stringResource(it.titleRes)) }
+            text = activeCustomSceneName?.let { stringResource(R.string.scene_running, it) }
+                ?: activeScene?.let { stringResource(R.string.scene_running, stringResource(it.titleRes)) }
                 ?: stringResource(R.string.no_scene_running),
             modifier = Modifier.padding(start = 6.dp, top = 3.dp, bottom = 3.dp),
-            color = if (activeScene == null) AppMuted else AppOrange,
+            color = if (activeScene == null && activeCustomSceneName == null) AppMuted else AppOrange,
             fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 0.6.sp,
@@ -630,7 +759,7 @@ private fun CompactCarPreview(
 }
 
 @Composable
-private fun SimplifiedHaloPreview(
+internal fun SimplifiedHaloPreview(
     enabled: Boolean,
     colors: List<Color>,
     selectedRing: Int?,
@@ -739,7 +868,7 @@ private fun SimplifiedHaloPreview(
 }
 
 @Composable
-private fun ChallengerFrontPreview(
+internal fun ChallengerFrontPreview(
     enabled: Boolean,
     colors: List<Color>,
     selectedRing: Int?,
@@ -1173,6 +1302,179 @@ private fun AdjustmentDialogFrame(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CustomScenesHeader(
+    sceneCount: Int,
+    canAdd: Boolean,
+    onCreate: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 10.dp, start = 4.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(R.string.your_scenes).uppercase(),
+                color = AppOrange,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 1.1.sp,
+            )
+            Text(
+                text = stringResource(R.string.your_scenes_hint),
+                color = AppMuted,
+                fontSize = 9.sp,
+            )
+        }
+        Text(
+            text = "$sceneCount/$MAX_CUSTOM_SCENES",
+            color = AppMuted,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+        )
+        Button(
+            onClick = onCreate,
+            enabled = canAdd,
+            modifier = Modifier.height(36.dp),
+            shape = RoundedCornerShape(10.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = AppOrange,
+                contentColor = Color.Black,
+                disabledContainerColor = AppSurfaceRaised,
+                disabledContentColor = AppMuted,
+            ),
+            contentPadding = PaddingValues(horizontal = 13.dp),
+        ) {
+            Text(stringResource(R.string.new_scene), fontSize = 9.sp, fontWeight = FontWeight.Black)
+        }
+    }
+}
+
+@Composable
+private fun EmptyCustomScenesCard(onCreate: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(AppSurface, RoundedCornerShape(14.dp))
+            .border(1.dp, AppLine, RoundedCornerShape(14.dp))
+            .clickable(onClick = onCreate)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(7.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .background(AppOrange.copy(alpha = 0.12f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("+", color = AppOrange, fontSize = 23.sp, fontWeight = FontWeight.Light)
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(stringResource(R.string.create_first_scene), fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.create_first_scene_hint), color = AppMuted, fontSize = 10.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun CustomSceneCard(
+    scene: CustomScene,
+    selected: Boolean,
+    onPlay: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    val previewColors = customScenePreviewColors(scene)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(if (selected) Color(0xFF211B17) else AppSurface, RoundedCornerShape(14.dp))
+            .border(1.dp, if (selected) AppOrange else AppLine, RoundedCornerShape(14.dp))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(9.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                previewColors.forEach { color ->
+                    Box(Modifier.size(20.dp).border(3.dp, color, CircleShape))
+                }
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(scene.name, fontWeight = FontWeight.Bold)
+                Text(
+                    stringResource(
+                        R.string.custom_scene_meta,
+                        scene.moments.size,
+                        formatSceneDuration(scene.durationMs),
+                    ),
+                    color = AppOrange,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Black,
+                )
+            }
+            Text(
+                stringResource(if (selected) R.string.scene_active else R.string.custom_badge),
+                modifier = Modifier
+                    .background(
+                        if (selected) AppOrange.copy(alpha = 0.14f) else AppSurfaceRaised,
+                        RoundedCornerShape(7.dp),
+                    )
+                    .padding(horizontal = 8.dp, vertical = 5.dp),
+                color = if (selected) AppOrange else AppMuted,
+                fontWeight = FontWeight.Black,
+                fontSize = 8.sp,
+                letterSpacing = 0.7.sp,
+            )
+        }
+        if (scene.description.isNotBlank()) {
+            Text(scene.description, color = AppMuted, fontSize = 11.sp)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(
+                onClick = onPlay,
+                modifier = Modifier.weight(1f).height(40.dp),
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (selected) AppSurfaceRaised else AppOrange,
+                    contentColor = if (selected) AppText else Color.Black,
+                ),
+            ) {
+                Text(
+                    stringResource(if (selected) R.string.restart_scene else R.string.play_scene),
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Black,
+                )
+            }
+            Button(
+                onClick = onEdit,
+                modifier = Modifier.height(40.dp),
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = AppSurfaceRaised),
+                contentPadding = PaddingValues(horizontal = 13.dp),
+            ) {
+                Text(stringResource(R.string.edit_action), fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            }
+            Button(
+                onClick = onDelete,
+                modifier = Modifier.height(40.dp),
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0x1FFF6B78),
+                    contentColor = Color(0xFFFF6B78),
+                ),
+                contentPadding = PaddingValues(horizontal = 13.dp),
+            ) {
+                Text(stringResource(R.string.delete_action), fontSize = 9.sp, fontWeight = FontWeight.Bold)
             }
         }
     }

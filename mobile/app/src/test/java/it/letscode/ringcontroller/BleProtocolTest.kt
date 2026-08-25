@@ -1,5 +1,6 @@
 package it.letscode.ringcontroller
 
+import androidx.compose.ui.graphics.Color
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -23,6 +24,7 @@ class BleProtocolTest {
         assertTrue(state.vehicleAutomationEnabled)
         assertEquals(listOf("#FF0000", "#00FF00", "#0000FF", "#FFFFFF"), state.ringColors.map { it.toHex() })
         assertEquals(listOf("#F2F6FF", "#FF6A00"), state.favorites.map { it.toHex() })
+        assertEquals(null, state.customSceneSlot)
     }
 
     @Test
@@ -38,5 +40,34 @@ class BleProtocolTest {
         assertEquals("SCENE|0", BleProtocol.scene(0))
         assertEquals("SCENE|19", BleProtocol.scene(19))
         assertEquals("SCENE|-1", BleProtocol.scene(null))
+    }
+
+    @Test
+    fun parsesAndEncodesCustomSceneCommands() {
+        val state = BleProtocol.parseState(
+            "STATE|1.1|0.4.0|1|224|-1|0|0|1|FF0000,FF0000,FF0000,FF0000|FF0000|3",
+        )
+        val scene = CustomScene(
+            slot = 3,
+            name = "Hazard",
+            description = "",
+            moments = listOf(
+                CustomSceneMoment(List(4) { "#FF6A00".parseHexColor()!! }, 450, CustomTransition.Jump),
+                CustomSceneMoment(List(4) { Color.Black }, 550, CustomTransition.Smooth),
+            ),
+        )
+
+        assertEquals(3, state?.customSceneSlot)
+        assertEquals(
+            listOf(
+                "CUSTOM_BEGIN|3|2",
+                "CUSTOM_STEP|3|0|450|0|FF6A00,FF6A00,FF6A00,FF6A00",
+                "CUSTOM_STEP|3|1|550|1|000000,000000,000000,000000",
+                "CUSTOM_COMMIT|3",
+                "CUSTOM_PLAY|3",
+            ),
+            BleProtocol.customSceneUpload(scene, playAfterUpload = true),
+        )
+        assertEquals("CUSTOM_DELETE|3", BleProtocol.customSceneDelete(3))
     }
 }

@@ -1,6 +1,6 @@
 # Ring Controller BLE protocol
 
-Status: **protocol 1.0 implemented in ESP32 firmware and Android**.
+Status: **protocol 1.1 implemented in ESP32 firmware and Android**.
 
 ## Transport and discovery
 
@@ -25,9 +25,26 @@ COLOR|target|RRGGBB
 SCENE|-1|0..19
 FAVORITES|RRGGBB,RRGGBB,...
 VEHICLE|0|1
+CUSTOM_BEGIN|slot|momentCount
+CUSTOM_STEP|slot|index|durationMs|transition|ring0,ring1,ring2,ring3
+CUSTOM_COMMIT|slot
+CUSTOM_PLAY|slot
+CUSTOM_DELETE|slot
 ```
 
 The `POWER` syntax above means one final field containing either `0` or `1`, not two fields. `COLOR` target `0..3` selects one ring; target `255` selects all rings. `SCENE|-1` stops an effect; IDs `0..19` select one of the controller-rendered scenes below. Favorites contain 1–12 colors and define both the physical-button cycle and Scene 19.
+
+Protocol 1.1 adds eight custom-scene slots (`0..7`). A custom scene contains `2..12` moments. Each moment has four colors, a duration of `150..5000` ms, and transition `0` (hold, then jump) or `1` (smooth interpolation to the next moment). Uploads are transactional: `CUSTOM_BEGIN` opens a staging buffer, all indexed `CUSTOM_STEP` messages populate it, and `CUSTOM_COMMIT` persists it only when every declared moment arrived. `CUSTOM_PLAY` starts the saved slot and `CUSTOM_DELETE` removes it. `SCENE|-1` also stops a custom scene.
+
+Example two-moment upload:
+
+```text
+CUSTOM_BEGIN|0|2
+CUSTOM_STEP|0|0|450|0|FF6A00,FF6A00,FF6A00,FF6A00
+CUSTOM_STEP|0|1|550|1|000000,000000,000000,000000
+CUSTOM_COMMIT|0
+CUSTOM_PLAY|0
+```
 
 | ID | Scene | Behavior |
 |---:|---|---|
@@ -67,13 +84,13 @@ VEHICLE|1
 ## State notification
 
 ```text
-STATE|protocol|firmware|enabled|brightness|scene|override|vehicleSignal|vehicleAutomation|ring0,ring1,ring2,ring3|favorites
+STATE|protocol|firmware|enabled|brightness|scene|override|vehicleSignal|vehicleAutomation|ring0,ring1,ring2,ring3|favorites|customScene
 ```
 
 Example:
 
 ```text
-STATE|1.0|0.2.0|1|224|-1|0|0|1|00E5E5,00E5E5,00E5E5,00E5E5|F2F6FF,FF6A00,FF304E
+STATE|1.1|0.4.0|1|224|-1|0|0|1|00E5E5,00E5E5,00E5E5,00E5E5|F2F6FF,FF6A00,FF304E|0
 ```
 
 - `enabled`: saved user power state.
@@ -84,17 +101,19 @@ STATE|1.0|0.2.0|1|224|-1|0|0|1|00E5E5,00E5E5,00E5E5,00E5E5|F2F6FF,FF6A00,FF304E
 - `vehicleAutomation`: whether the vehicle-input action is enabled.
 - `ring0..ring3`: saved solid colors; while `override=1`, actual output is forced white.
 - `favorites`: durable physical-button color cycle.
+- `customScene`: `-1` when no custom scene is active, otherwise controller slot `0..7`.
 
 The info characteristic contains `INFO|protocol|firmware|deviceName`.
 
 ## Ownership and persistence
 
-The ESP32 stores power, brightness, four solid colors, active scene, favorites, favorite index, and vehicle-automation enablement in Preferences/NVS. The button and vehicle input work without a phone. On reconnect, Android replaces its local preview with the controller snapshot, including colors changed with the physical button.
+The ESP32 stores power, brightness, four solid colors, active built-in/custom scene, eight custom-scene definitions, favorites, favorite index, and vehicle-automation enablement in Preferences/NVS. Custom names and descriptions remain phone-local UI metadata; timing, transitions, and ring colors are stored on the controller. The button, vehicle input, and an already uploaded custom scene work without a phone. On reconnect, Android replaces its local preview with the controller snapshot, including colors changed with the physical button.
 
 ## Compatibility
 
 - Protocol major/minor and firmware versions are present in every snapshot.
 - Scene IDs `0..2` retain their original protocol-1.0 meanings; the appended IDs `3..19` are backward-compatible additions.
+- Protocol 1.1 appends the optional `customScene` state field and new `CUSTOM_*` commands; a protocol-1.0 client can continue parsing the first 11 state fields and controlling built-in scenes.
 - Unknown commands are ignored and logged over USB serial.
 - Safety/off control remains available through `POWER|0`.
 - Future optional fields must be appended; incompatible field changes require protocol 2.x.
