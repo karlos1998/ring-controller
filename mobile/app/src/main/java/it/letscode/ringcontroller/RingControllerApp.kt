@@ -60,6 +60,7 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
@@ -556,8 +557,11 @@ private fun ChallengerFrontPreview(
             contentDescription = stringResource(R.string.challenger_preview_description),
             modifier = Modifier.matchParentSize(),
             contentScale = ContentScale.FillBounds,
-            alpha = 0.82f,
+            alpha = 0.76f,
             filterQuality = FilterQuality.High,
+            colorFilter = ColorFilter.colorMatrix(
+                ColorMatrix().apply { setToSaturation(0.62f) },
+            ),
         )
 
         Canvas(Modifier.matchParentSize()) {
@@ -572,16 +576,17 @@ private fun ChallengerFrontPreview(
                     val emphasized = selectedRing == null || selectedRing == index
                     val glowAlpha = when {
                         !enabled -> 0.04f
-                        emphasized -> 0.34f
-                        else -> 0.20f
+                        emphasized -> 0.46f
+                        else -> 0.28f
                     }
                     val center = Offset(size.width * centerX, size.height * 0.472f)
-                    val radius = size.width * 0.055f
+                    val radius = size.width * 0.062f
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
                                 haloColor.copy(alpha = glowAlpha),
-                                haloColor.copy(alpha = glowAlpha * 0.48f),
+                                haloColor.copy(alpha = glowAlpha * 0.56f),
+                                haloColor.copy(alpha = glowAlpha * 0.16f),
                                 Color.Transparent,
                             ),
                             center = center,
