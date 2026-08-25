@@ -28,8 +28,13 @@ The current interactive dashboard includes:
 - Animated Amber Chase, Demon Pulse, and Spectrum Wave demonstrations.
 - Summaries of the physical-button and vehicle-signal rules.
 - English and Polish UI resources, selected automatically from the Android system language.
+- A branded Challenger/Bluetooth launcher icon with cyan/orange halos, legacy density variants, adaptive-icon masks, Android 13 monochrome theming, and a matching dark system splash screen.
 
-These controls currently update an in-app demo model. BLE connection, controller synchronization, editable favorites, durable presets, and configuration persistence will be implemented against the versioned contract in `../protocol/`.
+When no ESP32 is available, controls remain usable as a local visual preview. With `D4WID-Ring` in range, the ESP32 becomes the authoritative state source through the versioned contract in `../protocol/`.
+
+## Launcher icon
+
+The approved source, generated density variants, and regeneration instructions are kept in [`branding/`](branding/). Edit the master and rerun the generator instead of manually changing individual mipmap files.
 
 ## Release signing
 

@@ -4,6 +4,7 @@ All notable changes will be documented here.
 
 ## Unreleased
 
+- Branded Challenger/Bluetooth Android launcher icon with cyan/orange RGB halos, adaptive and legacy density variants, and Android 13 themed-icon support.
 - Persistent car/simplified live-preview selection with four large interactive halo controls on both Drive and Scenes screens.
 - Initial monorepo structure.
 - ESP32 four-ring pin map, favorite-color button cycle, long-press off action, and vehicle override firmware.
