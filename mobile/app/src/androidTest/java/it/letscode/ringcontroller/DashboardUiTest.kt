@@ -16,6 +16,9 @@ class DashboardUiTest {
     fun appliesFavoriteToAnIndividuallySelectedRing() {
         composeRule.setContent { RingControllerApp() }
 
+        composeRule.onNodeWithContentDescription(
+            "Front view of the Challenger with four interactive halo rings",
+        ).assertExists()
         composeRule.onNodeWithContentDescription("Ring 1").performClick()
         composeRule.onNodeWithContentDescription("Apply Blue").performClick()
 

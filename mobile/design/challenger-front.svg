@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 340" role="img" aria-labelledby="title desc">
+  <title id="title">Stylized pre-facelift Challenger front</title>
+  <desc id="desc">Dark front-view line art with four headlamp locations reserved for interactive RGB halo overlays.</desc>
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#29303a"/>
+      <stop offset="0.52" stop-color="#171c23"/>
+      <stop offset="1" stop-color="#0d1015"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#151b23"/>
+      <stop offset="1" stop-color="#080a0e"/>
+    </linearGradient>
+    <pattern id="mesh" width="16" height="12" patternUnits="userSpaceOnUse">
+      <path d="M0 6h5l3-5 3 5h5M0 6h5l3 5 3-5h5" fill="none" stroke="#3e4652" stroke-width="1.25"/>
+    </pattern>
+  </defs>
+
+  <ellipse cx="400" cy="315" rx="327" ry="13" fill="#050609" opacity=".6"/>
+
+  <path d="M82 295 69 270 65 217c-1-42 18-82 55-104l59-24 43-58C249 8 551 8 578 31l43 58 59 24c37 22 56 62 55 104l-4 53-13 25-65 13H147Z"
+        fill="url(#body)" stroke="#6c7582" stroke-width="5" stroke-linejoin="round"/>
+
+  <path d="M222 92 250 42c22-19 278-19 300 0l28 50-57-9H279Z"
+        fill="url(#glass)" stroke="#58616e" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M191 102 222 39c25-34 331-34 356 0l31 63" fill="none" stroke="#87909c" stroke-width="4" stroke-linecap="round"/>
+
+  <path d="M122 112 77 105 54 120l7 19 53-5 21-18Z" fill="#151a21" stroke="#69727e" stroke-width="4"/>
+  <path d="m678 112 45-7 23 15-7 19-53-5-21-18Z" fill="#151a21" stroke="#69727e" stroke-width="4"/>
+
+  <path d="M120 113c83-37 477-37 560 0l31 31-91-13H180l-91 13Z"
+        fill="#252b34" stroke="#68717e" stroke-width="4" stroke-linejoin="round"/>
+  <path d="m339 91 18 34h86l18-34-26 9h-70Z" fill="#0a0d12" stroke="#4d5663" stroke-width="3"/>
+  <path d="M355 108h90M362 115h76" stroke="#66707d" stroke-width="2" stroke-linecap="round"/>
+
+  <path d="M89 145c0-13 11-24 24-24h574c13 0 24 11 24 24v53c0 13-11 24-24 24H113c-13 0-24-11-24-24Z"
+        fill="#080a0e" stroke="#737c88" stroke-width="5"/>
+  <path d="M111 142h578v60H111Z" fill="url(#mesh)" opacity=".72"/>
+
+  <g fill="#07090c" stroke="#454e5a" stroke-width="4">
+    <circle cx="144" cy="177" r="51"/>
+    <circle cx="252" cy="177" r="51"/>
+    <circle cx="548" cy="177" r="51"/>
+    <circle cx="656" cy="177" r="51"/>
+  </g>
+  <path d="M304 145h192v58H304Z" fill="url(#mesh)" stroke="#252b33" stroke-width="3"/>
+  <path d="M393 150h14v48h-14Z" fill="#171c22"/>
+
+  <path d="M85 224c25 17 43 52 59 80h512c16-28 34-63 59-80" fill="none" stroke="#3f4752" stroke-width="4"/>
+  <path d="M151 252c10-13 24-19 41-19h416c17 0 31 6 41 19l-16 42H167Z"
+        fill="#080a0d" stroke="#606a77" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M183 251h434l-11 26H194Z" fill="url(#mesh)"/>
+  <path d="M102 247h57l16 47h-58Z" fill="#090b0e" stroke="#535c68" stroke-width="4"/>
+  <path d="M698 247h-57l-16 47h58Z" fill="#090b0e" stroke="#535c68" stroke-width="4"/>
+  <path d="M74 299c122 12 530 12 652 0" fill="none" stroke="#8a939f" stroke-width="5" stroke-linecap="round"/>
+  <path d="M110 304v22M133 307v20M690 304v22M667 307v20" stroke="#4a525e" stroke-width="5" stroke-linecap="round"/>
+</svg>

@@ -16,6 +16,7 @@ Native Android application for D4WID Ring.
 The current interactive dashboard includes:
 
 - A four-halo front view matching the physical left/right layout.
+- Scalable Challenger front artwork with the four interactive halos placed inside the headlamp housings; the editable SVG source is `design/challenger-front.svg`.
 - Global and per-ring selection.
 - Favorite-color selection and brightness preview.
 - Animated Amber Chase, Demon Pulse, and Spectrum Wave demonstrations.

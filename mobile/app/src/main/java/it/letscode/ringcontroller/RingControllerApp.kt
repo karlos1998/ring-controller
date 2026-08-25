@@ -1,19 +1,23 @@
 package it.letscode.ringcontroller
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -49,11 +53,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -335,40 +340,55 @@ private fun HaloDashboard(
                     }
                 }
 
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(12.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                ) {
-                    RingHalo(0, colors[0], enabled, selectedRing == 0, onRingSelected)
-                    Spacer(Modifier.width(7.dp))
-                    RingHalo(1, colors[1], enabled, selectedRing == 1, onRingSelected)
-                    Spacer(Modifier.width(18.dp))
-                    Box(
-                        modifier = Modifier
-                            .width(18.dp)
-                            .height(4.dp)
-                            .background(Color(0xFF4A4E57), RoundedCornerShape(50)),
-                    )
-                    Spacer(Modifier.width(18.dp))
-                    RingHalo(2, colors[2], enabled, selectedRing == 2, onRingSelected)
-                    Spacer(Modifier.width(7.dp))
-                    RingHalo(3, colors[3], enabled, selectedRing == 3, onRingSelected)
-                }
-
-                Spacer(Modifier.height(13.dp))
-                Text(
-                    modifier = Modifier.fillMaxWidth(),
-                    text = "LEFT                     RIGHT",
-                    color = Color(0xFF686F7C),
-                    textAlign = TextAlign.Center,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 2.sp,
+                ChallengerFrontPreview(
+                    enabled = enabled,
+                    colors = colors,
+                    selectedRing = selectedRing,
+                    onRingSelected = onRingSelected,
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun ChallengerFrontPreview(
+    enabled: Boolean,
+    colors: List<Color>,
+    selectedRing: Int?,
+    onRingSelected: (Int) -> Unit,
+) {
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(800f / 340f),
+    ) {
+        Image(
+            painter = painterResource(R.drawable.challenger_front),
+            contentDescription = "Front view of the Challenger with four interactive halo rings",
+            modifier = Modifier.matchParentSize(),
+            contentScale = ContentScale.FillBounds,
+        )
+
+        val haloSize = maxWidth * 0.14f
+        val centerY = maxHeight * 0.52f
+        val centers = listOf(0.18f, 0.315f, 0.685f, 0.82f)
+
+        centers.forEachIndexed { index, centerX ->
+            RingHalo(
+                index = index,
+                color = colors[index],
+                enabled = enabled,
+                selected = selectedRing == index,
+                onSelected = onRingSelected,
+                diameter = haloSize,
+                modifier = Modifier.offset(
+                    x = maxWidth * centerX - haloSize / 2,
+                    y = centerY - haloSize / 2,
+                ),
+            )
         }
     }
 }
@@ -380,11 +400,13 @@ private fun RingHalo(
     enabled: Boolean,
     selected: Boolean,
     onSelected: (Int) -> Unit,
+    diameter: androidx.compose.ui.unit.Dp = 57.dp,
+    modifier: Modifier = Modifier,
 ) {
     val activeColor = if (enabled) color else Color(0xFF343842)
     Box(
-        modifier = Modifier
-            .size(57.dp)
+        modifier = modifier
+            .size(diameter)
             .clip(CircleShape)
             .semantics {
                 contentDescription = "Ring ${index + 1}"
