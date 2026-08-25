@@ -208,7 +208,7 @@ pio device monitor -d firmware --port /dev/cu.usbserial-10
 
 ### Android
 
-The Android app uses Kotlin, Jetpack Compose, minimum Android 8.0 (API 26), and application ID `it.letscode.ringcontroller`.
+The Android app uses Kotlin, Jetpack Compose, minimum Android 8.0 (API 26), and application ID `it.letscode.ringcontroller`. Its Drive, Scenes, and Config tabs are available in English and Polish, selected automatically from the Android system language.
 
 ```bash
 cd mobile

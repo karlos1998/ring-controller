@@ -1,4 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">D4WID Ring</string>
-</resources>
+    <string name="controller_subtitle">RING CONTROLLER</string>
+    <string name="vehicle_name">CHALLENGER ’13</string>
+    <string name="demo_mode">LOCAL DEMO</string>
 
+    <string name="nav_drive">Drive</string>
+    <string name="nav_scenes">Scenes</string>
+    <string name="nav_config">Config</string>
+    <string name="nav_drive_description">Open lighting controls</string>
+    <string name="nav_scenes_description">Open scenes</string>
+    <string name="nav_config_description">Open configuration</string>
+
+    <string name="live_halos">LIVE HALOS</string>
+    <string name="tap_halo_hint">Tap a halo to tune it</string>
+    <string name="lighting_off">Lighting is off</string>
+    <string name="power_on">ON</string>
+    <string name="power_off">OFF</string>
+    <string name="challenger_preview_description">Front view of a 2013 Dodge Challenger with four interactive halo rings</string>
+    <string name="ring_description">Ring %1$d</string>
+
+    <string name="editing">Editing</string>
+    <string name="all_rings">All rings</string>
+    <string name="ring_label">Ring %1$d</string>
+    <string name="all_short">ALL</string>
+    <string name="edit_all_rings_description">Edit all rings</string>
+    <string name="edit_ring_description">Edit ring %1$d</string>
+
+    <string name="favorites">Favorites</string>
+    <string name="tap_to_apply">TAP TO APPLY</string>
+    <string name="apply_color_description">Apply %1$s</string>
+    <string name="color_ice">Ice</string>
+    <string name="color_amber">Amber</string>
+    <string name="color_red">Red</string>
+    <string name="color_violet">Violet</string>
+    <string name="color_cyan">Cyan</string>
+    <string name="color_green">Green</string>
+    <string name="brightness">Brightness</string>
+
+    <string name="show_modes">Show modes</string>
+    <string name="parked_only">PARKED ONLY</string>
+    <string name="scene_amber_chase">Amber chase</string>
+    <string name="scene_amber_chase_subtitle">One halo at a time</string>
+    <string name="scene_demon_pulse">Demon pulse</string>
+    <string name="scene_demon_pulse_subtitle">Deep red breathing</string>
+    <string name="scene_spectrum_wave">Spectrum wave</string>
+    <string name="scene_spectrum_wave_subtitle">Color rolls across all four</string>
+    <string name="scene_badge_chase">CHASE</string>
+    <string name="scene_badge_pulse">PULSE</string>
+    <string name="scene_badge_wave">WAVE</string>
+    <string name="scene_running">Running: %1$s</string>
+    <string name="no_scene_running">No scene running</string>
+    <string name="stop_scene">Stop scene</string>
+
+    <string name="controller_status_title">ESP32 controller</string>
+    <string name="controller_status_demo">BLE connection will replace this local preview</string>
+    <string name="local_demo">DEMO</string>
+    <string name="input_rules">Inputs &amp; automation</string>
+    <string name="runs_on_controller">RUNS WITHOUT PHONE</string>
+    <string name="cabin_button">Cabin button</string>
+    <string name="cabin_button_subtitle">Physical control and RGB status light</string>
+    <string name="action_tap">TAP</string>
+    <string name="action_tap_result">Turn on / next favorite</string>
+    <string name="action_hold">HOLD</string>
+    <string name="action_hold_result">Turn all rings off</string>
+    <string name="action_rgb_led">RGB LED</string>
+    <string name="action_rgb_led_result">Mirror Ring 1 / shared color</string>
+    <string name="vehicle_light_signal">Vehicle light signal</string>
+    <string name="vehicle_light_signal_result">When +12 V is active: bright white</string>
+</resources>

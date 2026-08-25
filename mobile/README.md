@@ -15,12 +15,14 @@ Native Android application for D4WID Ring.
 
 The current interactive dashboard includes:
 
+- A tabbed Drive / Scenes / Config layout that keeps everyday controls separate from show modes and hardware behavior.
 - A four-halo front view matching the physical left/right layout.
-- Scalable Challenger front artwork with the four interactive halos placed inside the headlamp housings; the editable SVG source is `design/challenger-front.svg`.
+- Original scalable white 2013 Challenger front artwork with the four interactive halos placed inside the headlamp housings; the editable SVG source is `design/challenger-front.svg`.
 - Global and per-ring selection.
 - Favorite-color selection and brightness preview.
 - Animated Amber Chase, Demon Pulse, and Spectrum Wave demonstrations.
 - Summaries of the physical-button and vehicle-signal rules.
+- English and Polish UI resources, selected automatically from the Android system language.
 
 These controls currently update an in-app demo model. BLE connection, controller synchronization, editable favorites, durable presets, and configuration persistence will be implemented against the versioned contract in `../protocol/`.
 

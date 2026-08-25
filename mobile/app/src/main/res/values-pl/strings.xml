@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">D4WID Ring</string>
+    <string name="controller_subtitle">STEROWNIK RINGÓW</string>
+    <string name="vehicle_name">CHALLENGER ’13</string>
+    <string name="demo_mode">TRYB LOKALNY</string>
+
+    <string name="nav_drive">Sterowanie</string>
+    <string name="nav_scenes">Sceny</string>
+    <string name="nav_config">Ustawienia</string>
+    <string name="nav_drive_description">Otwórz sterowanie światłami</string>
+    <string name="nav_scenes_description">Otwórz sceny</string>
+    <string name="nav_config_description">Otwórz ustawienia</string>
+
+    <string name="live_halos">RINGI NA ŻYWO</string>
+    <string name="tap_halo_hint">Dotknij ringu, aby go ustawić</string>
+    <string name="lighting_off">Oświetlenie jest wyłączone</string>
+    <string name="power_on">WŁ.</string>
+    <string name="power_off">WYŁ.</string>
+    <string name="challenger_preview_description">Przód Dodge’a Challengera z 2013 roku z czterema interaktywnymi ringami</string>
+    <string name="ring_description">Ring %1$d</string>
+
+    <string name="editing">Edytujesz</string>
+    <string name="all_rings">Wszystkie ringi</string>
+    <string name="ring_label">Ring %1$d</string>
+    <string name="all_short">WSZ.</string>
+    <string name="edit_all_rings_description">Edytuj wszystkie ringi</string>
+    <string name="edit_ring_description">Edytuj ring %1$d</string>
+
+    <string name="favorites">Ulubione</string>
+    <string name="tap_to_apply">DOTKNIJ, ABY USTAWIĆ</string>
+    <string name="apply_color_description">Ustaw kolor %1$s</string>
+    <string name="color_ice">Lodowy</string>
+    <string name="color_amber">Bursztyn</string>
+    <string name="color_red">Czerwony</string>
+    <string name="color_violet">Fiolet</string>
+    <string name="color_cyan">Cyjan</string>
+    <string name="color_green">Zielony</string>
+    <string name="brightness">Jasność</string>
+
+    <string name="show_modes">Tryby pokazowe</string>
+    <string name="parked_only">TYLKO NA POSTOJU</string>
+    <string name="scene_amber_chase">Bursztynowy pościg</string>
+    <string name="scene_amber_chase_subtitle">Kolejno po jednym ringu</string>
+    <string name="scene_demon_pulse">Demoniczny puls</string>
+    <string name="scene_demon_pulse_subtitle">Głęboka, pulsująca czerwień</string>
+    <string name="scene_spectrum_wave">Fala kolorów</string>
+    <string name="scene_spectrum_wave_subtitle">Kolor przepływa przez cztery ringi</string>
+    <string name="scene_badge_chase">POŚCIG</string>
+    <string name="scene_badge_pulse">PULS</string>
+    <string name="scene_badge_wave">FALA</string>
+    <string name="scene_running">Aktywna: %1$s</string>
+    <string name="no_scene_running">Brak aktywnej sceny</string>
+    <string name="stop_scene">Zatrzymaj scenę</string>
+
+    <string name="controller_status_title">Sterownik ESP32</string>
+    <string name="controller_status_demo">Połączenie BLE zastąpi ten lokalny podgląd</string>
+    <string name="local_demo">DEMO</string>
+    <string name="input_rules">Wejścia i automatyzacje</string>
+    <string name="runs_on_controller">DZIAŁA BEZ TELEFONU</string>
+    <string name="cabin_button">Przycisk w kabinie</string>
+    <string name="cabin_button_subtitle">Sterowanie fizyczne i kontrolka RGB</string>
+    <string name="action_tap">KLIK</string>
+    <string name="action_tap_result">Włącz / następny ulubiony</string>
+    <string name="action_hold">PRZYTRZ.</string>
+    <string name="action_hold_result">Wyłącz wszystkie ringi</string>
+    <string name="action_rgb_led">DIODA RGB</string>
+    <string name="action_rgb_led_result">Kolor Ring 1 / wspólny kolor</string>
+    <string name="vehicle_light_signal">Sygnał świateł auta</string>
+    <string name="vehicle_light_signal_result">Aktywne +12 V: jasna biel</string>
+</resources>
