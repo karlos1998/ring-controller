@@ -6,6 +6,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Rule
 import org.junit.Test
 
@@ -15,30 +16,37 @@ class DashboardUiTest {
 
     @Test
     fun appliesFavoriteToAnIndividuallySelectedRing() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val favoriteHex = "#FF304E"
         composeRule.setContent { RingControllerApp() }
 
         composeRule.onNodeWithContentDescription(
-            "Front view of a 2013 Dodge Challenger with four interactive halo rings",
+            context.getString(R.string.challenger_preview_description),
         ).assertExists()
-        composeRule.onNodeWithContentDescription("Ring 1").performClick()
-        composeRule.onNodeWithText("FAVORITES").performScrollTo().performClick()
-        composeRule.onNodeWithContentDescription("Apply #FF304E").performClick()
+        composeRule.onNodeWithContentDescription(context.getString(R.string.ring_description, 1)).performClick()
+        composeRule.onNodeWithText(context.getString(R.string.favorites_tab).uppercase()).performScrollTo().performClick()
+        composeRule.onNodeWithContentDescription(
+            context.getString(R.string.apply_color_description, favoriteHex),
+        ).performClick()
 
-        composeRule.onNodeWithText("RING 1").assertExists()
-        composeRule.onNodeWithContentDescription("Apply #FF304E").assertIsSelected()
+        composeRule.onNodeWithText(context.getString(R.string.ring_label, 1).uppercase()).assertExists()
+        composeRule.onNodeWithContentDescription(
+            context.getString(R.string.apply_color_description, favoriteHex),
+        ).assertIsSelected()
     }
 
     @Test
     fun navigationSeparatesScenesAndConfiguration() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
         composeRule.setContent { RingControllerApp() }
 
-        composeRule.onNodeWithContentDescription("Open scenes").performClick()
-        composeRule.onNodeWithText("Show modes").assertExists()
-        composeRule.onNodeWithText("Amber chase").assertExists()
+        composeRule.onNodeWithContentDescription(context.getString(R.string.nav_scenes_description)).performClick()
+        composeRule.onNodeWithText(context.getString(R.string.show_modes)).assertExists()
+        composeRule.onNodeWithText(context.getString(R.string.scene_amber_chase)).assertExists()
 
-        composeRule.onNodeWithContentDescription("Open configuration").performClick()
-        composeRule.onNodeWithText("Inputs & automation").assertExists()
-        composeRule.onNodeWithText("Cabin button").assertExists()
-        composeRule.onNodeWithText("Vehicle light signal").assertExists()
+        composeRule.onNodeWithContentDescription(context.getString(R.string.nav_config_description)).performClick()
+        composeRule.onNodeWithText(context.getString(R.string.input_rules)).assertExists()
+        composeRule.onNodeWithText(context.getString(R.string.cabin_button)).assertExists()
+        composeRule.onNodeWithText(context.getString(R.string.vehicle_light_signal)).assertExists()
     }
 }

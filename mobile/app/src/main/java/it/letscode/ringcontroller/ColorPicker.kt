@@ -361,6 +361,7 @@ private fun FavoriteEditor(
                 itemsIndexed(favorites) { index, favorite ->
                     val hex = favorite.toHex()
                     val selected = favorite.rgbEquals(selectedColor)
+                    val applyDescription = stringResource(R.string.apply_color_description, hex)
                     Column(
                         modifier = Modifier.width(62.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -375,7 +376,7 @@ private fun FavoriteEditor(
                                     CircleShape,
                                 )
                                 .semantics {
-                                    contentDescription = "Apply $hex"
+                                    contentDescription = applyDescription
                                     this.selected = selected
                                 }
                                 .clickable { onColorSelected(favorite) }
