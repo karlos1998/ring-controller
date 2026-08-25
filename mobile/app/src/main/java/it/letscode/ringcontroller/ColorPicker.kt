@@ -21,13 +21,10 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,7 +41,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.max
@@ -69,11 +65,12 @@ internal fun ColorControlPanel(
     onColorSelected: (Color) -> Unit,
     onFavoriteAdded: (Color) -> Unit,
     onFavoriteRemoved: (Int) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     var currentTab by remember { mutableStateOf(ColorPanelTab.Picker) }
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .background(PickerSurface, RoundedCornerShape(16.dp))
             .border(1.dp, PickerLine, RoundedCornerShape(16.dp))
@@ -156,11 +153,6 @@ private fun FullColorPicker(
     onFavoriteAdded: (Color) -> Unit,
 ) {
     val hsv = color.toHsv()
-    var hexInput by remember { mutableStateOf(color.toHex()) }
-
-    LaunchedEffect(color) {
-        hexInput = color.toHex()
-    }
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
@@ -198,24 +190,10 @@ private fun FullColorPicker(
                     .background(color, RoundedCornerShape(12.dp))
                     .border(2.dp, Color.White.copy(alpha = 0.84f), RoundedCornerShape(12.dp)),
             )
-            OutlinedTextField(
-                value = hexInput,
-                onValueChange = { raw ->
-                    val normalized = raw.uppercase().take(7)
-                    hexInput = normalized
-                    normalized.parseHexColor()?.let(onColorChanged)
-                },
-                modifier = Modifier
-                    .weight(1f)
-                    .semantics { contentDescription = "Hex color input" },
-                label = { Text(stringResource(R.string.hex_color)) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
-            )
             Button(
                 onClick = { onFavoriteAdded(color) },
                 enabled = !isFavorite,
-                modifier = Modifier.height(48.dp),
+                modifier = Modifier.weight(1f).height(48.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = PickerOrange,
@@ -225,7 +203,7 @@ private fun FullColorPicker(
                 ),
             ) {
                 Text(
-                    text = stringResource(if (isFavorite) R.string.favorite_saved else R.string.save_favorite),
+                    text = stringResource(if (isFavorite) R.string.favorite_added else R.string.add_favorite),
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Black,
                 )
@@ -251,7 +229,7 @@ private fun SaturationValueField(
     Canvas(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(1.9f)
+            .aspectRatio(2.15f)
             .border(1.dp, Color.White.copy(alpha = 0.16f), RoundedCornerShape(12.dp))
             .pointerInput(hue) {
                 detectTapGestures { update(it, size.width.toFloat(), size.height.toFloat()) }
@@ -384,7 +362,6 @@ private fun FavoriteEditor(
                                 .background(favorite, CircleShape),
                         )
                         Spacer(Modifier.height(4.dp))
-                        Text(hex, color = PickerMuted, fontSize = 8.sp)
                         if (favorites.size > 1) {
                             Text(
                                 text = stringResource(R.string.remove_favorite),

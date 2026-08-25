@@ -1,6 +1,7 @@
 package it.letscode.ringcontroller
 
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -24,15 +25,51 @@ class DashboardUiTest {
             context.getString(R.string.challenger_preview_description),
         ).assertExists()
         composeRule.onNodeWithContentDescription(context.getString(R.string.ring_description, 1)).performClick()
-        composeRule.onNodeWithText(context.getString(R.string.favorites_tab).uppercase()).performScrollTo().performClick()
+        composeRule.onNodeWithContentDescription(
+            context.getString(R.string.open_color_editor_description),
+        ).performScrollTo().performClick()
+        composeRule.onNodeWithText(context.getString(R.string.favorites_tab).uppercase()).performClick()
         composeRule.onNodeWithContentDescription(
             context.getString(R.string.apply_color_description, favoriteHex),
         ).performClick()
+        composeRule.onNodeWithText(context.getString(R.string.save_action)).performClick()
 
         composeRule.onNodeWithText(context.getString(R.string.ring_label, 1).uppercase()).assertExists()
         composeRule.onNodeWithContentDescription(
+            context.getString(R.string.open_color_editor_description),
+        ).performClick()
+        composeRule.onNodeWithText(context.getString(R.string.favorites_tab).uppercase()).performClick()
+        composeRule.onNodeWithContentDescription(
             context.getString(R.string.apply_color_description, favoriteHex),
         ).assertIsSelected()
+    }
+
+    @Test
+    fun cancelingColorEditorDiscardsTheDraftColor() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val originalHex = "#00E5E5"
+        val draftHex = "#FF304E"
+        composeRule.setContent { RingControllerApp() }
+
+        composeRule.onNodeWithContentDescription(
+            context.getString(R.string.open_color_editor_description),
+        ).performScrollTo().performClick()
+        composeRule.onNodeWithText(context.getString(R.string.favorites_tab).uppercase()).performClick()
+        composeRule.onNodeWithContentDescription(
+            context.getString(R.string.apply_color_description, draftHex),
+        ).performClick()
+        composeRule.onNodeWithText(context.getString(R.string.cancel_action)).performClick()
+
+        composeRule.onNodeWithContentDescription(
+            context.getString(R.string.open_color_editor_description),
+        ).performClick()
+        composeRule.onNodeWithText(context.getString(R.string.favorites_tab).uppercase()).performClick()
+        composeRule.onNodeWithContentDescription(
+            context.getString(R.string.apply_color_description, originalHex),
+        ).assertIsSelected()
+        composeRule.onNodeWithContentDescription(
+            context.getString(R.string.apply_color_description, draftHex),
+        ).assertIsNotSelected()
     }
 
     @Test

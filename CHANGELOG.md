@@ -13,7 +13,8 @@ All notable changes will be documented here.
 - Supplied white 2013 Challenger front cutout with interactive halo overlays aligned to the original headlamps and retained yellow outer lamp centers.
 - Pixel-accurate per-ring tint masks and a clean app-rendered vehicle shadow replace the oversized circular overlays and rough source-image ground edge.
 - Stronger headlamp-clipped ambient glows and a subtly desaturated vehicle layer make live ring colors easier to read without enlarging the ring artwork.
-- Full-spectrum HSV/HEX color picker and editable 12-slot favorite-color collection.
+- Full-spectrum touch color picker and editable 12-slot favorite-color collection, without manual HEX entry.
+- Staged full-screen color and brightness editors with Cancel/Save actions, a fixed upper vehicle preview, and brightness-aware halo glow; gesture-heavy controls no longer interfere with Drive-screen scrolling.
 - Frame-synchronized, elapsed-time scene previews replace the previous 260 ms stepped animation loop.
 - Protocol-1.0 BLE service and Android GATT client with automatic discovery, connection status, command writes, state notifications, and authoritative reconnect synchronization.
 - ESP32 now stores and drives four independent colors, global brightness, editable favorites, and three local scenes while preserving physical-button and vehicle-input operation without a phone.

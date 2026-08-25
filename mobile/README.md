@@ -19,12 +19,13 @@ The current interactive dashboard includes:
 - A four-halo front view matching the physical left/right layout.
 - A transparent raster cutout of the supplied white 2013 Challenger front reference. A pixel-derived halo mask preserves the source rings' exact thin, partially occluded shape while allowing each lamp to be tinted independently. A headlamp-clipped color glow and subtly desaturated vehicle layer emphasize the live output without changing the ring geometry, while the original rough ground edge is replaced by an app-rendered soft shadow. Confirm redistribution rights for the supplied source image before publishing an APK or repository release.
 - Global and per-ring selection.
-- A full HSV color field, hue strip, and exact six-digit HEX input for choosing any RGB color.
+- A full HSV color field and hue strip for choosing any RGB color without typing numeric values.
 - An editable Favorites tab with up to 12 colors that can be saved from the picker, applied, or removed.
+- Dedicated full-screen color and brightness editors keep drag gestures away from the Drive screen. Their upper live preview reflects staged changes—including visible glow intensity—and Cancel discards them without sending BLE commands; Save commits them to the controller.
 - Scene previews are calculated from elapsed time and synchronized to display frames for smooth 30+ FPS motion instead of coarse timer steps.
 - Automatic BLE discovery for `D4WID-Ring`, persistent connection status in the header, and a detailed status card with firmware version.
 - Bidirectional protocol-1.0 synchronization: app changes are sent to the controller, while reconnects and physical input changes refresh power, colors, brightness, scene, favorites, and vehicle state from ESP32.
-- Favorite-color selection and brightness preview.
+- Compact Drive cards open the color and brightness editors instead of embedding gesture-heavy controls in the scrolling page.
 - Animated Amber Chase, Demon Pulse, and Spectrum Wave demonstrations.
 - Summaries of the physical-button and vehicle-signal rules.
 - English and Polish UI resources, selected automatically from the Android system language.

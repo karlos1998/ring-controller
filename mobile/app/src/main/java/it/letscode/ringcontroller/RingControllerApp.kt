@@ -18,9 +18,11 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -79,6 +81,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.min
@@ -122,6 +126,11 @@ private enum class DashboardTab(
     Config(R.string.nav_config, R.string.nav_config_description),
 }
 
+private enum class AdjustmentEditor {
+    Color,
+    Brightness,
+}
+
 private val defaultFavoriteColors = listOf(
     Color(0xFFF2F6FF),
     Color(0xFFFF6A00),
@@ -148,6 +157,10 @@ internal fun RingControllerApp(
     var vehicleAutomationEnabled by remember { mutableStateOf(true) }
     var favoriteColors by remember { mutableStateOf(defaultFavoriteColors) }
     var simplifiedPreview by rememberSaveable { mutableStateOf(initialSimplifiedPreview) }
+    var adjustmentEditor by remember { mutableStateOf<AdjustmentEditor?>(null) }
+    var draftRingColors by remember { mutableStateOf(ringColors) }
+    var draftFavorites by remember { mutableStateOf(favoriteColors) }
+    var draftBrightness by remember { mutableFloatStateOf(brightness) }
 
     LaunchedEffect(controllerSnapshot) {
         val controller = controllerSnapshot ?: return@LaunchedEffect
@@ -172,19 +185,6 @@ internal fun RingControllerApp(
                 ringColors = colorsForScene(scene, elapsedSeconds)
             }
         }
-    }
-
-    fun applyFavorite(color: Color) {
-        if (activeScene != null) bleManager?.setScene(null)
-        activeScene = null
-        ringColors = if (selectedRing == null) {
-            List(4) { color }
-        } else {
-            ringColors.mapIndexed { index, current ->
-                if (index == selectedRing) color else current
-            }
-        }
-        bleManager?.setColor(selectedRing, color)
     }
 
     MaterialTheme(colorScheme = AppColors) {
@@ -213,23 +213,14 @@ internal fun RingControllerApp(
                         bleManager?.setPower(ringsEnabled)
                     },
                     onTargetSelected = { selectedRing = it },
-                    onColorSelected = ::applyFavorite,
-                    favoriteColors = favoriteColors,
-                    onFavoriteAdded = { color ->
-                        if (favoriteColors.size < 12 && favoriteColors.none { it.toHex() == color.toHex() }) {
-                            favoriteColors = favoriteColors + color
-                            bleManager?.setFavorites(favoriteColors)
-                        }
+                    onOpenColorEditor = {
+                        draftRingColors = ringColors
+                        draftFavorites = favoriteColors
+                        adjustmentEditor = AdjustmentEditor.Color
                     },
-                    onFavoriteRemoved = { index ->
-                        if (favoriteColors.size > 1) {
-                            favoriteColors = favoriteColors.filterIndexed { itemIndex, _ -> itemIndex != index }
-                            bleManager?.setFavorites(favoriteColors)
-                        }
-                    },
-                    onBrightnessChanged = {
-                        brightness = it
-                        bleManager?.setBrightness(it)
+                    onOpenBrightnessEditor = {
+                        draftBrightness = brightness
+                        adjustmentEditor = AdjustmentEditor.Brightness
                     },
                 )
 
@@ -238,6 +229,7 @@ internal fun RingControllerApp(
                     ringsEnabled = ringsEnabled,
                     ringColors = ringColors,
                     selectedRing = selectedRing,
+                    brightness = brightness,
                     activeScene = activeScene,
                     connectionState = connectionState,
                     simplifiedPreview = simplifiedPreview,
@@ -272,6 +264,65 @@ internal fun RingControllerApp(
                 )
             }
         }
+
+        when (adjustmentEditor) {
+            AdjustmentEditor.Color -> ColorAdjustmentDialog(
+                enabled = ringsEnabled,
+                colors = draftRingColors,
+                selectedRing = selectedRing,
+                brightness = brightness,
+                favorites = draftFavorites,
+                simplifiedPreview = simplifiedPreview,
+                onColorChanged = { color ->
+                    draftRingColors = if (selectedRing == null) {
+                        List(4) { color }
+                    } else {
+                        draftRingColors.mapIndexed { index, current ->
+                            if (index == selectedRing) color else current
+                        }
+                    }
+                },
+                onFavoriteAdded = { color ->
+                    if (draftFavorites.size < 12 && draftFavorites.none { it.toHex() == color.toHex() }) {
+                        draftFavorites = draftFavorites + color
+                    }
+                },
+                onFavoriteRemoved = { index ->
+                    if (draftFavorites.size > 1) {
+                        draftFavorites = draftFavorites.filterIndexed { itemIndex, _ -> itemIndex != index }
+                    }
+                },
+                onCancel = { adjustmentEditor = null },
+                onSave = {
+                    val committedColor = selectedRing?.let(draftRingColors::get) ?: draftRingColors.first()
+                    val favoritesChanged = draftFavorites.map(Color::toHex) != favoriteColors.map(Color::toHex)
+                    if (activeScene != null) bleManager?.setScene(null)
+                    activeScene = null
+                    ringColors = draftRingColors
+                    favoriteColors = draftFavorites
+                    if (favoritesChanged) bleManager?.setFavorites(draftFavorites)
+                    bleManager?.setColor(selectedRing, committedColor)
+                    adjustmentEditor = null
+                },
+            )
+
+            AdjustmentEditor.Brightness -> BrightnessAdjustmentDialog(
+                enabled = ringsEnabled,
+                colors = ringColors,
+                selectedRing = selectedRing,
+                brightness = draftBrightness,
+                simplifiedPreview = simplifiedPreview,
+                onBrightnessChanged = { draftBrightness = it },
+                onCancel = { adjustmentEditor = null },
+                onSave = {
+                    brightness = draftBrightness
+                    bleManager?.setBrightness(draftBrightness)
+                    adjustmentEditor = null
+                },
+            )
+
+            null -> Unit
+        }
     }
 }
 
@@ -301,6 +352,11 @@ private fun colorsForScene(scene: ScenePreset, elapsedSeconds: Float): List<Colo
     }
 }
 
+private fun Color.scaledBy(brightness: Float): Color {
+    val level = brightness.coerceIn(0f, 1f)
+    return Color(red * level, green * level, blue * level, alpha)
+}
+
 @Composable
 private fun DriveScreen(
     modifier: Modifier,
@@ -314,11 +370,8 @@ private fun DriveScreen(
     onRingSelected: (Int) -> Unit,
     onPowerClick: () -> Unit,
     onTargetSelected: (Int?) -> Unit,
-    onColorSelected: (Color) -> Unit,
-    favoriteColors: List<Color>,
-    onFavoriteAdded: (Color) -> Unit,
-    onFavoriteRemoved: (Int) -> Unit,
-    onBrightnessChanged: (Float) -> Unit,
+    onOpenColorEditor: () -> Unit,
+    onOpenBrightnessEditor: () -> Unit,
 ) {
     ScreenColumn(modifier) {
         item { AppHeader(connectionState = connectionState) }
@@ -328,22 +381,15 @@ private fun DriveScreen(
                 colors = ringColors,
                 selectedRing = selectedRing,
                 activeScene = activeScene,
+                brightness = brightness,
                 simplifiedPreview = simplifiedPreview,
                 onRingSelected = onRingSelected,
                 onPowerClick = onPowerClick,
             )
         }
         item { RingTargetSelector(selectedRing = selectedRing, onSelected = onTargetSelected) }
-        item {
-            ColorControlPanel(
-                favorites = favoriteColors,
-                selectedColor = selectedRing?.let(ringColors::get) ?: ringColors.first(),
-                onColorSelected = onColorSelected,
-                onFavoriteAdded = onFavoriteAdded,
-                onFavoriteRemoved = onFavoriteRemoved,
-            )
-        }
-        item { BrightnessControl(brightness, onBrightnessChanged) }
+        item { ColorSummaryCard(ringColors, selectedRing, onOpenColorEditor) }
+        item { BrightnessSummaryCard(brightness, onOpenBrightnessEditor) }
     }
 }
 
@@ -353,6 +399,7 @@ private fun ScenesScreen(
     ringsEnabled: Boolean,
     ringColors: List<Color>,
     selectedRing: Int?,
+    brightness: Float,
     activeScene: ScenePreset?,
     connectionState: BleConnectionState,
     simplifiedPreview: Boolean,
@@ -368,6 +415,7 @@ private fun ScenesScreen(
                 colors = ringColors,
                 selectedRing = selectedRing,
                 activeScene = activeScene,
+                brightness = brightness,
                 simplifiedPreview = simplifiedPreview,
                 onRingSelected = onRingSelected,
             )
@@ -527,6 +575,7 @@ private fun HaloDashboard(
     colors: List<Color>,
     selectedRing: Int?,
     activeScene: ScenePreset?,
+    brightness: Float,
     simplifiedPreview: Boolean,
     onRingSelected: (Int) -> Unit,
     onPowerClick: () -> Unit,
@@ -589,9 +638,9 @@ private fun HaloDashboard(
                     .padding(horizontal = 8.dp, vertical = 10.dp),
             ) {
                 if (simplifiedPreview) {
-                    SimplifiedHaloPreview(enabled, colors, selectedRing, onRingSelected)
+                    SimplifiedHaloPreview(enabled, colors, selectedRing, brightness, onRingSelected)
                 } else {
-                    ChallengerFrontPreview(enabled, colors, selectedRing, onRingSelected)
+                    ChallengerFrontPreview(enabled, colors, selectedRing, brightness, onRingSelected)
                 }
             }
         }
@@ -604,6 +653,7 @@ private fun CompactCarPreview(
     colors: List<Color>,
     selectedRing: Int?,
     activeScene: ScenePreset?,
+    brightness: Float,
     simplifiedPreview: Boolean,
     onRingSelected: (Int) -> Unit,
 ) {
@@ -615,9 +665,9 @@ private fun CompactCarPreview(
             .padding(10.dp),
     ) {
         if (simplifiedPreview) {
-            SimplifiedHaloPreview(enabled, colors, selectedRing, onRingSelected)
+            SimplifiedHaloPreview(enabled, colors, selectedRing, brightness, onRingSelected)
         } else {
-            ChallengerFrontPreview(enabled, colors, selectedRing, onRingSelected)
+            ChallengerFrontPreview(enabled, colors, selectedRing, brightness, onRingSelected)
         }
         Text(
             text = activeScene?.let { stringResource(R.string.scene_running, stringResource(it.titleRes)) }
@@ -636,7 +686,8 @@ private fun SimplifiedHaloPreview(
     enabled: Boolean,
     colors: List<Color>,
     selectedRing: Int?,
-    onRingSelected: (Int) -> Unit,
+    brightness: Float,
+    onRingSelected: ((Int) -> Unit)?,
 ) {
     BoxWithConstraints(
         modifier = Modifier
@@ -663,14 +714,14 @@ private fun SimplifiedHaloPreview(
                 cap = StrokeCap.Round,
             )
             centers.forEachIndexed { index, centerX ->
-                val color = if (enabled) colors[index] else Color(0xFF353A42)
+                val color = if (enabled) colors[index].scaledBy(brightness) else Color(0xFF353A42)
                 val emphasized = selectedRing == null || selectedRing == index
                 val center = Offset(size.width * centerX, size.height * 0.48f)
                 val radius = size.minDimension * 0.20f
                 val glowAlpha = when {
                     !enabled -> 0.08f
-                    emphasized -> 0.62f
-                    else -> 0.26f
+                    emphasized -> 0.12f + brightness * 0.50f
+                    else -> 0.06f + brightness * 0.20f
                 }
 
                 drawCircle(
@@ -721,18 +772,20 @@ private fun SimplifiedHaloPreview(
 
         val targetSize = maxHeight * 0.68f
         val centerY = maxHeight * 0.48f
-        centers.forEachIndexed { index, centerX ->
-            RingHitTarget(
-                index = index,
-                selected = selectedRing == index,
-                onSelected = onRingSelected,
-                modifier = Modifier
-                    .offset(
-                        x = maxWidth * centerX - targetSize / 2,
-                        y = centerY - targetSize / 2,
-                    )
-                    .size(targetSize),
-            )
+        if (onRingSelected != null) {
+            centers.forEachIndexed { index, centerX ->
+                RingHitTarget(
+                    index = index,
+                    selected = selectedRing == index,
+                    onSelected = onRingSelected,
+                    modifier = Modifier
+                        .offset(
+                            x = maxWidth * centerX - targetSize / 2,
+                            y = centerY - targetSize / 2,
+                        )
+                        .size(targetSize),
+                )
+            }
         }
     }
 }
@@ -742,7 +795,8 @@ private fun ChallengerFrontPreview(
     enabled: Boolean,
     colors: List<Color>,
     selectedRing: Int?,
-    onRingSelected: (Int) -> Unit,
+    brightness: Float,
+    onRingSelected: ((Int) -> Unit)?,
 ) {
     BoxWithConstraints(
         modifier = Modifier
@@ -792,12 +846,12 @@ private fun ChallengerFrontPreview(
                 bottom = size.height * 0.56f,
             ) {
                 haloCenters.forEachIndexed { index, centerX ->
-                    val haloColor = if (enabled) colors[index] else Color(0xFF343842)
+                    val haloColor = if (enabled) colors[index].scaledBy(brightness) else Color(0xFF343842)
                     val emphasized = selectedRing == null || selectedRing == index
                     val glowAlpha = when {
                         !enabled -> 0.04f
-                        emphasized -> 0.46f
-                        else -> 0.28f
+                        emphasized -> 0.10f + brightness * 0.42f
+                        else -> 0.06f + brightness * 0.24f
                     }
                     val center = Offset(size.width * centerX, size.height * 0.472f)
                     val radius = size.width * 0.062f
@@ -820,7 +874,7 @@ private fun ChallengerFrontPreview(
         }
 
         maskClipBounds.forEachIndexed { index, bounds ->
-            val haloColor = if (enabled) colors[index] else Color(0xFF343842)
+            val haloColor = if (enabled) colors[index].scaledBy(brightness) else Color(0xFF343842)
             listOf(0.62f, 1f).forEach { layerAlpha ->
                 Image(
                     bitmap = haloMaskBitmap,
@@ -838,7 +892,7 @@ private fun ChallengerFrontPreview(
                             }
                         },
                     contentScale = ContentScale.FillBounds,
-                    alpha = layerAlpha,
+                    alpha = layerAlpha * if (enabled) (0.18f + brightness * 0.82f) else 1f,
                     filterQuality = FilterQuality.High,
                     colorFilter = ColorFilter.tint(
                         color = haloColor,
@@ -852,18 +906,20 @@ private fun ChallengerFrontPreview(
         val hitHeight = maxHeight * 0.135f
         val centerY = maxHeight * 0.472f
 
-        haloCenters.forEachIndexed { index, centerX ->
-            RingHitTarget(
-                index = index,
-                selected = selectedRing == index,
-                onSelected = onRingSelected,
-                modifier = Modifier.offset(
-                    x = maxWidth * centerX - hitWidth / 2,
-                    y = centerY - hitHeight / 2,
+        if (onRingSelected != null) {
+            haloCenters.forEachIndexed { index, centerX ->
+                RingHitTarget(
+                    index = index,
+                    selected = selectedRing == index,
+                    onSelected = onRingSelected,
+                    modifier = Modifier.offset(
+                        x = maxWidth * centerX - hitWidth / 2,
+                        y = centerY - hitHeight / 2,
+                    )
+                        .width(hitWidth)
+                        .height(hitHeight),
                 )
-                    .width(hitWidth)
-                    .height(hitHeight),
-            )
+            }
         }
     }
 }
@@ -964,35 +1020,291 @@ private fun TargetChip(
 }
 
 @Composable
-private fun BrightnessControl(
-    brightness: Float,
-    onBrightnessChanged: (Float) -> Unit,
+private fun ColorSummaryCard(
+    colors: List<Color>,
+    selectedRing: Int?,
+    onClick: () -> Unit,
 ) {
-    Column(
+    val description = stringResource(R.string.open_color_editor_description)
+    val shownColors = selectedRing?.let { listOf(colors[it]) } ?: colors
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(AppSurface, RoundedCornerShape(14.dp))
             .border(1.dp, AppLine, RoundedCornerShape(14.dp))
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .semantics { contentDescription = description }
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.brightness), fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(stringResource(R.string.color_picker_tab), fontWeight = FontWeight.Bold)
             Text(
-                text = "${(brightness * 100).toInt()}%",
-                color = AppOrange,
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 13.sp,
+                stringResource(R.string.tap_to_open_palette),
+                color = AppMuted,
+                fontSize = 11.sp,
             )
         }
-        Slider(
-            value = brightness,
-            onValueChange = onBrightnessChanged,
-            colors = SliderDefaults.colors(
-                thumbColor = Color.White,
-                activeTrackColor = AppOrange,
-                inactiveTrackColor = Color(0xFF353A42),
-            ),
+        Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            shownColors.forEach { color ->
+                Box(
+                    modifier = Modifier
+                        .size(if (shownColors.size == 1) 38.dp else 27.dp)
+                        .shadow(8.dp, CircleShape, ambientColor = color, spotColor = color)
+                        .background(color, CircleShape)
+                        .border(1.dp, Color.White.copy(alpha = 0.38f), CircleShape),
+                )
+            }
+        }
+        Spacer(Modifier.width(12.dp))
+        Text(
+            stringResource(R.string.change_action),
+            color = AppOrange,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 0.8.sp,
         )
+    }
+}
+
+@Composable
+private fun BrightnessSummaryCard(
+    brightness: Float,
+    onClick: () -> Unit,
+) {
+    val description = stringResource(R.string.open_brightness_editor_description)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(AppSurface, RoundedCornerShape(14.dp))
+            .border(1.dp, AppLine, RoundedCornerShape(14.dp))
+            .semantics { contentDescription = description }
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(stringResource(R.string.brightness), fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.tap_to_adjust_brightness), color = AppMuted, fontSize = 11.sp)
+        }
+        Box(
+            modifier = Modifier
+                .width(54.dp)
+                .height(12.dp)
+                .shadow(
+                    elevation = (2f + brightness * 12f).dp,
+                    shape = CircleShape,
+                    ambientColor = AppOrange,
+                    spotColor = AppOrange,
+                )
+                .background(AppOrange.copy(alpha = 0.18f + brightness * 0.82f), CircleShape),
+        )
+        Spacer(Modifier.width(12.dp))
+        Text(
+            text = "${(brightness * 100).toInt()}%",
+            color = AppOrange,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 13.sp,
+        )
+    }
+}
+
+@Composable
+private fun ColorAdjustmentDialog(
+    enabled: Boolean,
+    colors: List<Color>,
+    selectedRing: Int?,
+    brightness: Float,
+    favorites: List<Color>,
+    simplifiedPreview: Boolean,
+    onColorChanged: (Color) -> Unit,
+    onFavoriteAdded: (Color) -> Unit,
+    onFavoriteRemoved: (Int) -> Unit,
+    onCancel: () -> Unit,
+    onSave: () -> Unit,
+) {
+    val selectedColor = selectedRing?.let(colors::get) ?: colors.first()
+    AdjustmentDialogFrame(
+        title = stringResource(R.string.color_editor_title),
+        subtitle = selectedRing?.let { stringResource(R.string.ring_label, it + 1) }
+            ?: stringResource(R.string.all_rings),
+        enabled = enabled,
+        colors = colors,
+        selectedRing = selectedRing,
+        brightness = brightness,
+        simplifiedPreview = simplifiedPreview,
+        onCancel = onCancel,
+        onSave = onSave,
+    ) {
+        ColorControlPanel(
+            favorites = favorites,
+            selectedColor = selectedColor,
+            onColorSelected = onColorChanged,
+            onFavoriteAdded = onFavoriteAdded,
+            onFavoriteRemoved = onFavoriteRemoved,
+        )
+    }
+}
+
+@Composable
+private fun BrightnessAdjustmentDialog(
+    enabled: Boolean,
+    colors: List<Color>,
+    selectedRing: Int?,
+    brightness: Float,
+    simplifiedPreview: Boolean,
+    onBrightnessChanged: (Float) -> Unit,
+    onCancel: () -> Unit,
+    onSave: () -> Unit,
+) {
+    val sliderDescription = stringResource(R.string.brightness_slider_description)
+    AdjustmentDialogFrame(
+        title = stringResource(R.string.brightness_editor_title),
+        subtitle = "${(brightness * 100).toInt()}%",
+        enabled = enabled,
+        colors = colors,
+        selectedRing = selectedRing,
+        brightness = brightness,
+        simplifiedPreview = simplifiedPreview,
+        onCancel = onCancel,
+        onSave = onSave,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(AppSurface, RoundedCornerShape(16.dp))
+                .border(1.dp, AppLine, RoundedCornerShape(16.dp))
+                .padding(horizontal = 16.dp, vertical = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(R.string.glow_strength),
+                    color = AppText,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    text = "${(brightness * 100).toInt()}%",
+                    color = AppOrange,
+                    fontWeight = FontWeight.Black,
+                )
+            }
+            Slider(
+                value = brightness,
+                onValueChange = onBrightnessChanged,
+                modifier = Modifier.semantics { contentDescription = sliderDescription },
+                colors = SliderDefaults.colors(
+                    thumbColor = Color.White,
+                    activeTrackColor = AppOrange,
+                    inactiveTrackColor = Color(0xFF353A42),
+                ),
+            )
+            Text(stringResource(R.string.brightness_preview_hint), color = AppMuted, fontSize = 10.sp)
+        }
+    }
+}
+
+@Composable
+private fun AdjustmentDialogFrame(
+    title: String,
+    subtitle: String,
+    enabled: Boolean,
+    colors: List<Color>,
+    selectedRing: Int?,
+    brightness: Float,
+    simplifiedPreview: Boolean,
+    onCancel: () -> Unit,
+    onSave: () -> Unit,
+    controls: @Composable () -> Unit,
+) {
+    Dialog(
+        onDismissRequest = onCancel,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+        ),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFF08090C))
+                .statusBarsPadding()
+                .navigationBarsPadding(),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(title, color = AppText, fontSize = 21.sp, fontWeight = FontWeight.Black)
+                    Text(subtitle.uppercase(), color = AppOrange, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                }
+                Text(
+                    stringResource(R.string.preview_changes),
+                    color = AppMuted,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.8.sp,
+                )
+            }
+
+            Column(
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .fillMaxWidth()
+                    .background(Color(0xFF16191E), RoundedCornerShape(18.dp))
+                    .border(1.dp, AppLine, RoundedCornerShape(18.dp))
+                    .padding(8.dp),
+            ) {
+                if (simplifiedPreview) {
+                    SimplifiedHaloPreview(enabled, colors, selectedRing, brightness, null)
+                } else {
+                    ChallengerFrontPreview(enabled, colors, selectedRing, brightness, null)
+                }
+            }
+
+            Spacer(Modifier.weight(1f))
+
+            Surface(
+                color = Color(0xFF0D0F13),
+                contentColor = AppText,
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                border = BorderStroke(1.dp, AppLine),
+                shadowElevation = 18.dp,
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    controls()
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Button(
+                            onClick = onCancel,
+                            modifier = Modifier.weight(1f).height(48.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = AppSurfaceRaised,
+                                contentColor = AppText,
+                            ),
+                        ) {
+                            Text(stringResource(R.string.cancel_action), fontWeight = FontWeight.Black)
+                        }
+                        Button(
+                            onClick = onSave,
+                            modifier = Modifier.weight(1f).height(48.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = AppOrange,
+                                contentColor = Color.Black,
+                            ),
+                        ) {
+                            Text(stringResource(R.string.save_action), fontWeight = FontWeight.Black)
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
