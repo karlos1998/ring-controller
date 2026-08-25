@@ -5,13 +5,14 @@ PlatformIO/Arduino firmware for the classic ESP32-WROOM-32 30-pin DevKit.
 ## Current behavior
 
 - Configures all 15 planned PWM outputs at 1 kHz, 8-bit resolution.
-- Displays phase-shifted rainbow colors across four rings.
-- Mirrors ring 1 on the reserved cabin RGB indicator pins.
-- Toggles user lighting with an active-low momentary button on GPIO34.
+- Displays the saved favorite color across all four rings.
+- Mirrors the shared color on the reserved cabin RGB indicator pins.
+- A short button press turns the rings on when they are off, or advances to the next saved favorite while they are on.
+- Holding the button for 850 ms turns the user lighting off.
 - Forces all rings to bright white while the debounced, active-low vehicle signal on GPIO35 is active.
-- Stores the user enabled state and initial vehicle-automation settings in ESP32 Preferences/NVS.
+- Stores the user enabled state, favorite index, and initial vehicle-automation settings in ESP32 Preferences/NVS.
 
-BLE configuration is not implemented yet. The current behavior is a hardware integration test and architecture foundation.
+The initial built-in favorites are Ice, Amber, Red, Violet, Blue, and Green. BLE configuration is not implemented yet, so editing and reordering those favorites from Android remains a planned step.
 
 ## Build and upload
 
@@ -32,4 +33,3 @@ If the upload is unstable, keep the upload speed at 115200 as configured in `pla
 - The cabin indicator must not be connected until its driver/current requirements are known.
 
 The canonical pin map is `include/PinMap.h` and must remain synchronized with `../hardware/PINOUT.md`.
-

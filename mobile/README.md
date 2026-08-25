@@ -13,7 +13,15 @@ Native Android application for D4WID Ring.
 ./gradlew :app:assembleDebug
 ```
 
-The current UI is an intentionally small project foundation. BLE connection, real ring controls, presets, and configuration persistence will be implemented against the versioned contract in `../protocol/`.
+The current interactive dashboard includes:
+
+- A four-halo front view matching the physical left/right layout.
+- Global and per-ring selection.
+- Favorite-color selection and brightness preview.
+- Animated Amber Chase, Demon Pulse, and Spectrum Wave demonstrations.
+- Summaries of the physical-button and vehicle-signal rules.
+
+These controls currently update an in-app demo model. BLE connection, controller synchronization, editable favorites, durable presets, and configuration persistence will be implemented against the versioned contract in `../protocol/`.
 
 ## Release signing
 
@@ -29,4 +37,3 @@ VERSION_CODE
 ```
 
 Never commit the keystore. Keep a secure offline backup because Android requires future updates to be signed with the same key.
-

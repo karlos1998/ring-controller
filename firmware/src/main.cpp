@@ -20,14 +20,24 @@ constexpr uint8_t kPwmMaximum = 255;
 constexpr bool kModuleInputActiveLow = false;
 
 constexpr uint32_t kButtonDebounceMs = 40;
+constexpr uint32_t kButtonLongPressMs = 850;
 constexpr uint32_t kVehicleSignalDebounceMs = 250;
-constexpr uint32_t kRainbowStepMs = 15;
+constexpr uint32_t kRenderIntervalMs = 15;
 
 struct RgbColor {
     uint8_t red;
     uint8_t green;
     uint8_t blue;
 };
+
+constexpr std::array<RgbColor, 6> kFavoriteColors{{
+    {242, 246, 255},  // Ice
+    {255, 106, 0},    // Amber
+    {255, 48, 78},    // Red
+    {168, 85, 247},   // Violet
+    {51, 136, 255},   // Blue
+    {67, 224, 123},   // Green
+}};
 
 class DebouncedInput {
 public:
@@ -77,8 +87,11 @@ DebouncedInput vehicleSignalInput(ringcontroller::pins::kVehicleSignal, true, kV
 bool userEnabled = true;
 bool vehicleAutomationEnabled = true;
 uint8_t forcedWhiteBrightness = 255;
-uint32_t lastRainbowStepMs = 0;
-uint8_t rainbowPosition = 0;
+uint8_t favoriteColorIndex = 1;
+uint32_t lastRenderMs = 0;
+uint32_t buttonPressedAtMs = 0;
+bool buttonPressTracked = false;
+bool buttonLongPressHandled = false;
 
 uint8_t outputDuty(const uint8_t brightness) {
     return kModuleInputActiveLow ? static_cast<uint8_t>(kPwmMaximum - brightness) : brightness;
@@ -125,48 +138,13 @@ void applyAllRings(const RgbColor color) {
     applyColor(ringcontroller::pins::kCabinIndicator, color);
 }
 
-RgbColor rainbowWheel(uint8_t position) {
-    if (position < 85) {
-        return {
-            static_cast<uint8_t>(255 - position * 3),
-            static_cast<uint8_t>(position * 3),
-            0,
-        };
-    }
-
-    if (position < 170) {
-        position -= 85;
-        return {
-            0,
-            static_cast<uint8_t>(255 - position * 3),
-            static_cast<uint8_t>(position * 3),
-        };
-    }
-
-    position -= 170;
-    return {
-        static_cast<uint8_t>(position * 3),
-        0,
-        static_cast<uint8_t>(255 - position * 3),
-    };
-}
-
 void renderNormalState() {
     if (!userEnabled) {
         applyAllRings({0, 0, 0});
         return;
     }
 
-    constexpr std::array<uint8_t, 4> kPhaseOffsets{{0, 64, 128, 192}};
-    for (size_t ring = 0; ring < ringcontroller::pins::kRings.size(); ++ring) {
-        applyColor(
-            ringcontroller::pins::kRings[ring],
-            rainbowWheel(static_cast<uint8_t>(rainbowPosition + kPhaseOffsets[ring]))
-        );
-    }
-
-    // The cabin indicator mirrors ring 1 during the bench-test animation.
-    applyColor(ringcontroller::pins::kCabinIndicator, rainbowWheel(rainbowPosition));
+    applyAllRings(kFavoriteColors[favoriteColorIndex]);
 }
 
 void renderOutputs() {
@@ -183,13 +161,50 @@ void loadConfiguration() {
     userEnabled = preferences.getBool("enabled", true);
     vehicleAutomationEnabled = preferences.getBool("veh-auto", true);
     forcedWhiteBrightness = preferences.getUChar("white", 255);
+    favoriteColorIndex = static_cast<uint8_t>(
+        preferences.getUChar("favorite", 1) % kFavoriteColors.size()
+    );
+}
+
+void handleShortButtonPress() {
+    if (!userEnabled) {
+        userEnabled = true;
+        Serial.printf("Rings enabled with favorite %u\n", favoriteColorIndex);
+    } else {
+        favoriteColorIndex = static_cast<uint8_t>(
+            (favoriteColorIndex + 1) % kFavoriteColors.size()
+        );
+        preferences.putUChar("favorite", favoriteColorIndex);
+        Serial.printf("Selected favorite %u\n", favoriteColorIndex);
+    }
+
+    preferences.putBool("enabled", userEnabled);
 }
 
 void handleInputs(const uint32_t nowMs) {
-    if (buttonInput.update(nowMs) && buttonInput.isActive()) {
-        userEnabled = !userEnabled;
-        preferences.putBool("enabled", userEnabled);
-        Serial.printf("Rings %s by physical button\n", userEnabled ? "enabled" : "disabled");
+    if (buttonInput.update(nowMs)) {
+        if (buttonInput.isActive()) {
+            buttonPressedAtMs = nowMs;
+            buttonPressTracked = true;
+            buttonLongPressHandled = false;
+        } else if (buttonPressTracked) {
+            if (!buttonLongPressHandled) {
+                handleShortButtonPress();
+            }
+            buttonPressTracked = false;
+        }
+    }
+
+    if (
+        buttonPressTracked &&
+        buttonInput.isActive() &&
+        !buttonLongPressHandled &&
+        nowMs - buttonPressedAtMs >= kButtonLongPressMs
+    ) {
+        userEnabled = false;
+        buttonLongPressHandled = true;
+        preferences.putBool("enabled", false);
+        Serial.println("Rings disabled by button long press");
     }
 
     if (vehicleSignalInput.update(nowMs)) {
@@ -212,10 +227,11 @@ void setup() {
     loadConfiguration();
 
     Serial.printf(
-        "Configuration: enabled=%s, vehicleAutomation=%s, white=%u\n",
+        "Configuration: enabled=%s, vehicleAutomation=%s, white=%u, favorite=%u\n",
         userEnabled ? "true" : "false",
         vehicleAutomationEnabled ? "true" : "false",
-        forcedWhiteBrightness
+        forcedWhiteBrightness,
+        favoriteColorIndex
     );
 }
 
@@ -223,9 +239,8 @@ void loop() {
     const uint32_t nowMs = millis();
     handleInputs(nowMs);
 
-    if (nowMs - lastRainbowStepMs >= kRainbowStepMs) {
-        lastRainbowStepMs = nowMs;
-        ++rainbowPosition;
+    if (nowMs - lastRenderMs >= kRenderIntervalMs) {
+        lastRenderMs = nowMs;
         renderOutputs();
     }
 

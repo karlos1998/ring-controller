@@ -30,6 +30,8 @@ safety/off > active vehicle-signal override > physical-button state > app-select
 
 The exact priority policy will become configurable only where doing so remains deterministic and safe.
 
+Default physical-button behavior is short press to turn on or advance to the next favorite and an 850 ms hold to turn user lighting off. The favorite cycle and button actions are stored and executed on the ESP32. The cabin RGB indicator mirrors the shared solid color; when ring outputs differ, it follows Ring 1.
+
 ## Android layers
 
 1. Compose UI.
@@ -43,4 +45,3 @@ The exact priority policy will become configurable only where doing so remains d
 - Pull requests and pushes build firmware and a debug APK.
 - A `v*` tag builds a signed APK and publishes it to GitHub Releases.
 - The Android signing key is stored outside Git and injected through GitHub Actions secrets.
-

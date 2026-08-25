@@ -15,6 +15,7 @@ The protocol must be explicitly versioned before the first BLE implementation. D
 - Set global enabled/disabled state.
 - Set color and brightness independently for rings 1–4.
 - Apply effects and presets.
+- Read, reorder, add, and remove the physical button's favorite-color cycle.
 - Configure momentary-button short, multi-click, and long-press actions.
 - Enable/disable the 12 V input automation.
 - Configure the action on 12 V activation and deactivation.
@@ -52,3 +53,11 @@ Associated settings include enabled, white brightness, preset ID, activation deb
 - Keep safety/off commands available across compatible protocol versions.
 - The ESP32 remains authoritative; the app refreshes state after every reconnect.
 
+## Default physical-button behavior
+
+- Short press while off: turn the rings on using the current favorite.
+- Short press while on: advance to the next favorite color.
+- Long press (850 ms): turn user lighting off.
+- The cabin RGB indicator mirrors the shared solid color. When rings differ or an effect is active, it follows Ring 1 because one RGB indicator cannot display four colors simultaneously.
+
+The favorites and button rules are durable controller configuration. The Android app edits them, but the ESP32 executes them without a connected phone.

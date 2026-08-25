@@ -2,7 +2,7 @@
 
 Android-controlled RGB halo-ring controller for a pre-facelift 2013 Dodge Challenger. The system replaces an unreliable aftermarket RGB controller with an ESP32-based controller, independently drives four 12 V common-anode RGB rings, mirrors the active color inside the cabin, and can apply a configurable action when a 12 V vehicle signal becomes active.
 
-> **Project status:** hardware prototype and software foundation. The firmware currently provides a bench-test rainbow, physical-button handling, and an ignition/light-input override. Bluetooth control and the complete Android UI are the next milestones.
+> **Project status:** hardware prototype and interactive Android dashboard. The firmware provides favorite-color cycling, short/long physical-button handling, and an ignition/light-input override. Bluetooth synchronization is the next milestone.
 
 ## Repository layout
 
@@ -145,7 +145,13 @@ ESP32 3V3 ── 10 kΩ ── GPIO34
                       ESP32 GND
 ```
 
-The initial firmware uses a short press to toggle the rings. Multi-click and long-press actions are planned and will be configurable.
+The current default behavior is:
+
+- Short press while off: turn on using the current favorite color.
+- Short press while on: advance to the next favorite.
+- Hold for 850 ms: turn the user lighting off.
+
+These rules run on the ESP32 without a phone. The Android app will make the favorite list and button actions configurable after BLE synchronization is implemented.
 
 ## Cabin RGB indicator
 
@@ -154,6 +160,7 @@ GPIO21, GPIO22, and GPIO23 are reserved for the cabin indicator. Do not connect 
 - A bare low-current RGB LED requires one current-limiting resistor per color.
 - A 12 V RGB indicator requires a suitable driver; it must not be powered from an ESP32 GPIO.
 - An addressable LED can reduce the indicator to one GPIO, but that is not the current pin plan.
+- One RGB indicator cannot represent four different ring colors simultaneously. It mirrors the shared solid color and follows Ring 1 during independent colors or effects.
 
 ## Power and automotive safety
 
@@ -232,9 +239,8 @@ The signing key must be backed up permanently. Losing it prevents future APKs fr
 
 - Independent color and brightness for all four rings.
 - Solid colors, synchronized effects, and per-ring animations.
-- Physical button with configurable short/multiple/long press actions.
+- Editable physical-button favorites and configurable short/multiple/long press actions.
 - Configurable 12 V input automation, including force-white, apply preset, restore previous state, turn off, or ignore.
 - Settings stored in ESP32 non-volatile storage so automation works without the phone.
 - BLE configuration and control from the Android app.
 - Optional deep sleep/wake strategy to minimize parked-vehicle battery drain.
-
