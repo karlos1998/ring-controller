@@ -36,6 +36,9 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -1844,20 +1847,38 @@ private fun DashboardNavigation(
     currentTab: DashboardTab,
     onTabSelected: (DashboardTab) -> Unit,
 ) {
-    Surface(
-        color = Color(0xF5101216),
-        shadowElevation = 12.dp,
-        border = BorderStroke(1.dp, AppLine),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
+    Column {
+        HorizontalDivider(color = AppLine.copy(alpha = 0.72f))
+        NavigationBar(
+            containerColor = Color(0xFF101216),
+            contentColor = AppText,
+            tonalElevation = 0.dp,
         ) {
             DashboardTab.entries.forEach { tab ->
-                NavigationItem(
-                    tab = tab,
-                    selected = currentTab == tab,
+                val selected = currentTab == tab
+                val description = stringResource(tab.descriptionRes)
+                NavigationBarItem(
+                    selected = selected,
                     onClick = { onTabSelected(tab) },
+                    icon = { NavigationGlyph(tab = tab, selected = selected) },
+                    label = {
+                        Text(
+                            text = stringResource(tab.labelRes),
+                            fontSize = 10.sp,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                        )
+                    },
+                    modifier = Modifier.semantics {
+                        contentDescription = description
+                        this.selected = selected
+                    },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = AppOrange,
+                        selectedTextColor = AppText,
+                        indicatorColor = AppOrange.copy(alpha = 0.14f),
+                        unselectedIconColor = AppMuted,
+                        unselectedTextColor = AppMuted,
+                    ),
                 )
             }
         }
@@ -1865,39 +1886,9 @@ private fun DashboardNavigation(
 }
 
 @Composable
-private fun NavigationItem(
-    tab: DashboardTab,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    val description = stringResource(tab.descriptionRes)
-    Column(
-        modifier = Modifier
-            .width(82.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .semantics {
-                contentDescription = description
-                this.selected = selected
-            }
-            .clickable(onClick = onClick)
-            .padding(vertical = 5.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        NavigationGlyph(tab = tab, selected = selected)
-        Spacer(Modifier.height(2.dp))
-        Text(
-            stringResource(tab.labelRes),
-            color = if (selected) AppText else AppMuted,
-            fontSize = 10.sp,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-        )
-    }
-}
-
-@Composable
 private fun NavigationGlyph(tab: DashboardTab, selected: Boolean) {
     val color = if (selected) AppOrange else AppMuted
-    Canvas(Modifier.size(22.dp)) {
+    Canvas(Modifier.size(23.dp)) {
         val stroke = Stroke(width = 1.8.dp.toPx(), cap = StrokeCap.Round)
         when (tab) {
             DashboardTab.Drive -> {
