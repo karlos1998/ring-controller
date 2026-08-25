@@ -51,7 +51,7 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           RELEASE_VERSION: ${{ github.ref_name }}
           VERSION_CODE: ${{ github.run_number }}
-        run: ./gradlew :app:testReleaseUnitTest :app:assembleRelease --stacktrace
+        run: ./gradlew :app:testDebugUnitTest :app:assembleRelease --stacktrace
 
       - name: Prepare release files
         env:
@@ -66,4 +66,3 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "${GITHUB_REF_NAME}" dist/* --generate-notes --title "D4WID Ring ${GITHUB_REF_NAME}"
-
