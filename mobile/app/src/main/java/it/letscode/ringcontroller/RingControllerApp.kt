@@ -85,6 +85,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import kotlin.math.pow
 
 private val AppBackground = Color(0xFF08090C)
 private val AppSurface = Color(0xFF12151A)
@@ -395,6 +396,12 @@ internal fun Color.scaledBy(brightness: Float): Color {
     val level = brightness.coerceIn(0f, 1f)
     return Color(red * level, green * level, blue * level, alpha)
 }
+
+internal fun perceptualPreviewBrightness(brightness: Float): Float =
+    brightness.coerceIn(0f, 1f).pow(0.42f)
+
+internal fun Color.asPreviewEmission(brightness: Float): Color =
+    scaledBy(perceptualPreviewBrightness(brightness))
 
 @Composable
 private fun DriveScreen(
@@ -791,31 +798,34 @@ internal fun SimplifiedHaloPreview(
                 cap = StrokeCap.Round,
             )
             centers.forEachIndexed { index, centerX ->
-                val color = if (enabled) colors[index].scaledBy(brightness) else Color(0xFF353A42)
+                val perceivedBrightness = if (enabled) perceptualPreviewBrightness(brightness) else 0f
+                val color = if (enabled) colors[index].asPreviewEmission(brightness) else Color(0xFF353A42)
                 val emphasized = selectedRing == null || selectedRing == index
                 val center = Offset(size.width * centerX, size.height * 0.48f)
                 val radius = size.minDimension * 0.20f
                 val glowAlpha = when {
                     !enabled -> 0.08f
-                    emphasized -> 0.12f + brightness * 0.50f
-                    else -> 0.06f + brightness * 0.20f
+                    emphasized -> 0.20f + perceivedBrightness * 0.72f
+                    else -> 0.10f + perceivedBrightness * 0.36f
                 }
 
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            color.copy(alpha = glowAlpha * 0.35f),
-                            color.copy(alpha = glowAlpha * 0.18f),
+                            color.copy(alpha = glowAlpha * 0.62f),
+                            color.copy(alpha = glowAlpha * 0.28f),
                             Color.Transparent,
                         ),
                         center = center,
-                        radius = radius * 1.65f,
+                        radius = radius * 1.58f,
                     ),
                     center = center,
-                    radius = radius * 1.65f,
+                    radius = radius * 1.58f,
                 )
                 drawCircle(
-                    color = color.copy(alpha = if (enabled) 0.22f else 0.08f),
+                    color = color.copy(
+                        alpha = if (enabled) 0.18f + perceivedBrightness * 0.30f else 0.08f,
+                    ),
                     center = center,
                     radius = radius * 1.05f,
                 )
@@ -831,7 +841,9 @@ internal fun SimplifiedHaloPreview(
                     radius = radius * 0.70f,
                 )
                 drawCircle(
-                    color = Color.White.copy(alpha = if (enabled) 0.48f else 0.10f),
+                    color = Color.White.copy(
+                        alpha = if (enabled) 0.20f + perceivedBrightness * 0.42f else 0.10f,
+                    ),
                     center = center,
                     radius = radius * 0.88f,
                     style = Stroke(width = 1.dp.toPx()),
@@ -923,35 +935,37 @@ internal fun ChallengerFrontPreview(
                 bottom = size.height * 0.56f,
             ) {
                 haloCenters.forEachIndexed { index, centerX ->
-                    val haloColor = if (enabled) colors[index].scaledBy(brightness) else Color(0xFF343842)
+                    val perceivedBrightness = if (enabled) perceptualPreviewBrightness(brightness) else 0f
+                    val haloColor = if (enabled) colors[index].asPreviewEmission(brightness) else Color(0xFF343842)
                     val emphasized = selectedRing == null || selectedRing == index
                     val glowAlpha = when {
                         !enabled -> 0.04f
-                        emphasized -> 0.10f + brightness * 0.42f
-                        else -> 0.06f + brightness * 0.24f
+                        emphasized -> 0.18f + perceivedBrightness * 0.72f
+                        else -> 0.08f + perceivedBrightness * 0.38f
                     }
                     val center = Offset(size.width * centerX, size.height * 0.472f)
                     val radius = size.width * 0.062f
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                haloColor.copy(alpha = glowAlpha),
-                                haloColor.copy(alpha = glowAlpha * 0.56f),
-                                haloColor.copy(alpha = glowAlpha * 0.16f),
+                                haloColor.copy(alpha = glowAlpha * 0.82f),
+                                haloColor.copy(alpha = glowAlpha * 0.46f),
+                                haloColor.copy(alpha = glowAlpha * 0.18f),
                                 Color.Transparent,
                             ),
                             center = center,
-                            radius = radius,
+                            radius = radius * 1.02f,
                         ),
                         center = center,
-                        radius = radius,
+                        radius = radius * 1.02f,
                     )
                 }
             }
         }
 
         maskClipBounds.forEachIndexed { index, bounds ->
-            val haloColor = if (enabled) colors[index].scaledBy(brightness) else Color(0xFF343842)
+            val perceivedBrightness = if (enabled) perceptualPreviewBrightness(brightness) else 0f
+            val haloColor = if (enabled) colors[index].asPreviewEmission(brightness) else Color(0xFF343842)
             listOf(0.62f, 1f).forEach { layerAlpha ->
                 Image(
                     bitmap = haloMaskBitmap,
@@ -969,7 +983,7 @@ internal fun ChallengerFrontPreview(
                             }
                         },
                     contentScale = ContentScale.FillBounds,
-                    alpha = layerAlpha * if (enabled) (0.18f + brightness * 0.82f) else 1f,
+                    alpha = layerAlpha * if (enabled) (0.30f + perceivedBrightness * 0.70f) else 1f,
                     filterQuality = FilterQuality.High,
                     colorFilter = ColorFilter.tint(
                         color = haloColor,

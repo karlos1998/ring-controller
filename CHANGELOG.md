@@ -4,6 +4,7 @@ All notable changes will be documented here.
 
 ## Unreleased
 
+- Improved live-preview halo luminance with a perceptual brightness curve, a brighter emissive core, and localized bloom so low settings remain legible while 100% visibly glows.
 - Added a localized moment-based Scene Studio with live playback, custom names/descriptions, four-ring color editing, per-moment timing, smooth/jump transitions, reordering, duplication, and deletion. Eight executable custom scenes are transactionally uploaded over a serialized BLE write queue and retained by ESP32 for phone-free playback.
 - Branded Challenger/Bluetooth Android launcher icon with cyan/orange RGB halos, adaptive and legacy density variants, and Android 13 themed-icon support.
 - Persistent car/simplified live-preview selection with four large interactive halo controls on both Drive and Scenes screens.
