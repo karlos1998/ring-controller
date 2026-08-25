@@ -79,7 +79,9 @@ class DashboardUiTest {
 
         composeRule.onNodeWithContentDescription(context.getString(R.string.nav_scenes_description)).performClick()
         composeRule.onNodeWithText(context.getString(R.string.show_modes)).assertExists()
+        composeRule.onNodeWithText(context.getString(R.string.scene_category_signals).uppercase()).assertExists()
         composeRule.onNodeWithText(context.getString(R.string.scene_amber_chase)).assertExists()
+        composeRule.onNodeWithText(context.getString(R.string.scene_hazard_flash)).assertExists()
 
         composeRule.onNodeWithContentDescription(context.getString(R.string.nav_config_description)).performClick()
         composeRule.onNodeWithText(context.getString(R.string.input_rules)).assertExists()

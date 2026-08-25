@@ -13,7 +13,7 @@ PlatformIO/Arduino firmware for the classic ESP32-WROOM-32 30-pin DevKit.
 - Stores the user enabled state, favorite index, and initial vehicle-automation settings in ESP32 Preferences/NVS.
 - Advertises a protocol-1.0 BLE GATT service as `D4WID-Ring` and accepts power, per-ring color, brightness, scene, favorite, and vehicle-automation commands.
 - Notifies Android of the authoritative power state, four colors, brightness, active scene, vehicle input/override state, favorites, and firmware version after commands or physical input changes.
-- Runs all three scenes locally at roughly 66 render updates per second, so a connected phone is not required for effects.
+- Runs all 20 signal, everyday, and show scenes locally at roughly 66 render updates per second, so a connected phone is not required for effects. Scene 19 crossfades through the durable favorite-color collection.
 
 The initial built-in favorites are Ice, Amber, Red, Violet, Cyan, and Green. Android can replace the durable 1–12 color list through BLE; the physical button then uses the updated cycle without a phone.
 

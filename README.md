@@ -2,7 +2,7 @@
 
 Android-controlled RGB halo-ring controller for a pre-facelift 2013 Dodge Challenger. The system replaces an unreliable aftermarket RGB controller with an ESP32-based controller, independently drives four 12 V common-anode RGB rings, mirrors the active color inside the cabin, and can apply a configurable action when a 12 V vehicle signal becomes active.
 
-> **Project status:** buildable ESP32 firmware and Android dashboard with protocol-1.0 BLE control. The firmware provides independent ring colors, local scenes, editable favorite-color cycling, short/long physical-button handling, and an ignition/light-input override. Bench and in-vehicle hardware validation are still required.
+> **Project status:** buildable ESP32 firmware and Android dashboard with protocol-1.0 BLE control. The firmware provides independent ring colors, 20 locally rendered scenes, editable favorite-color cycling, short/long physical-button handling, and an ignition/light-input override. Bench and in-vehicle hardware validation are still required.
 
 ## Repository layout
 
@@ -210,7 +210,7 @@ pio device monitor -d firmware --port /dev/cu.usbserial-10
 
 ### Android
 
-The Android app uses Kotlin, Jetpack Compose, minimum Android 8.0 (API 26), and application ID `it.letscode.ringcontroller`. Its Drive, Scenes, and Config tabs are available in English and Polish, selected automatically from the Android system language. It scans for `D4WID-Ring`, displays connection state continuously, and synchronizes power, brightness, four colors, scenes, favorites, and vehicle-input state with the ESP32. Color and brightness are edited in dedicated staged dialogs with a live vehicle preview; Cancel leaves both the local state and controller untouched, while Save sends the result over BLE. A phone-local Config setting switches the live visualization between the Challenger front view and a simplified four-large-ring view; the selection persists across app restarts.
+The Android app uses Kotlin, Jetpack Compose, minimum Android 8.0 (API 26), and application ID `it.letscode.ringcontroller`. Its Drive, Scenes, and Config tabs are available in English and Polish, selected automatically from the Android system language. It scans for `D4WID-Ring`, displays connection state continuously, and synchronizes power, brightness, four colors, 20 categorized scenes, favorites, and vehicle-input state with the ESP32. Color and brightness are edited in dedicated staged dialogs with a live vehicle preview; Cancel leaves both the local state and controller untouched, while Save sends the result over BLE. A phone-local Config setting switches the live visualization between the Challenger front view and a simplified four-large-ring view; the selection persists across app restarts.
 
 ```bash
 cd mobile

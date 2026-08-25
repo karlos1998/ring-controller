@@ -32,4 +32,11 @@ class BleProtocolTest {
         assertEquals("COLOR|2|FF304E", BleProtocol.color(2, red))
         assertEquals("COLOR|255|FF304E", BleProtocol.color(null, red))
     }
+
+    @Test
+    fun encodesTheExtendedSceneCatalogWithoutChangingStopSyntax() {
+        assertEquals("SCENE|0", BleProtocol.scene(0))
+        assertEquals("SCENE|19", BleProtocol.scene(19))
+        assertEquals("SCENE|-1", BleProtocol.scene(null))
+    }
 }

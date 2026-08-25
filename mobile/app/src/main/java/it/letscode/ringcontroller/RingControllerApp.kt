@@ -83,10 +83,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import kotlin.math.PI
-import kotlin.math.abs
-import kotlin.math.min
-import kotlin.math.sin
 
 private val AppBackground = Color(0xFF08090C)
 private val AppSurface = Color(0xFF12151A)
@@ -106,16 +102,6 @@ private val AppColors = darkColorScheme(
     onBackground = AppText,
     onSurface = AppText,
 )
-
-private enum class ScenePreset(
-    @param:StringRes val titleRes: Int,
-    @param:StringRes val subtitleRes: Int,
-    @param:StringRes val badgeRes: Int,
-) {
-    AmberChase(R.string.scene_amber_chase, R.string.scene_amber_chase_subtitle, R.string.scene_badge_chase),
-    DemonPulse(R.string.scene_demon_pulse, R.string.scene_demon_pulse_subtitle, R.string.scene_badge_pulse),
-    SpectrumWave(R.string.scene_spectrum_wave, R.string.scene_spectrum_wave_subtitle, R.string.scene_badge_wave),
-}
 
 private enum class DashboardTab(
     @param:StringRes val labelRes: Int,
@@ -152,6 +138,7 @@ internal fun RingControllerApp(
     var ringsEnabled by remember { mutableStateOf(true) }
     var selectedRing by remember { mutableStateOf<Int?>(null) }
     var ringColors by remember { mutableStateOf(List(4) { AppCyan }) }
+    var solidRingColors by remember { mutableStateOf(ringColors) }
     var brightness by remember { mutableFloatStateOf(0.88f) }
     var activeScene by remember { mutableStateOf<ScenePreset?>(null) }
     var vehicleAutomationEnabled by remember { mutableStateOf(true) }
@@ -167,14 +154,15 @@ internal fun RingControllerApp(
         ringsEnabled = controller.enabled || controller.vehicleOverrideActive
         brightness = controller.brightness / 255f
         activeScene = if (controller.vehicleOverrideActive) null
-        else controller.scene?.let { ScenePreset.entries.getOrNull(it) }
+        else controller.scene?.let(ScenePreset::fromId)
+        solidRingColors = controller.ringColors
         ringColors = if (controller.vehicleOverrideActive) List(4) { Color.White }
         else controller.ringColors
         vehicleAutomationEnabled = controller.vehicleAutomationEnabled
         if (controller.favorites.isNotEmpty()) favoriteColors = controller.favorites
     }
 
-    LaunchedEffect(activeScene, ringsEnabled) {
+    LaunchedEffect(activeScene, ringsEnabled, favoriteColors) {
         val scene = activeScene ?: return@LaunchedEffect
         if (!ringsEnabled) return@LaunchedEffect
         var startedAtNanos = 0L
@@ -182,7 +170,7 @@ internal fun RingControllerApp(
             withFrameNanos { frameTimeNanos ->
                 if (startedAtNanos == 0L) startedAtNanos = frameTimeNanos
                 val elapsedSeconds = (frameTimeNanos - startedAtNanos) / 1_000_000_000f
-                ringColors = colorsForScene(scene, elapsedSeconds)
+                ringColors = colorsForScene(scene, elapsedSeconds, favoriteColors)
             }
         }
     }
@@ -231,16 +219,19 @@ internal fun RingControllerApp(
                     selectedRing = selectedRing,
                     brightness = brightness,
                     activeScene = activeScene,
+                    favoriteColors = favoriteColors,
                     connectionState = connectionState,
                     simplifiedPreview = simplifiedPreview,
                     onRingSelected = { selectedRing = it },
                     onSceneSelected = { scene ->
+                        if (activeScene == null) solidRingColors = ringColors
                         activeScene = scene
                         ringsEnabled = true
-                        bleManager?.setScene(scene.ordinal)
+                        bleManager?.setScene(scene.id)
                     },
                     onStopScene = {
                         activeScene = null
+                        ringColors = solidRingColors
                         bleManager?.setScene(null)
                     },
                 )
@@ -299,6 +290,7 @@ internal fun RingControllerApp(
                     if (activeScene != null) bleManager?.setScene(null)
                     activeScene = null
                     ringColors = draftRingColors
+                    solidRingColors = draftRingColors
                     favoriteColors = draftFavorites
                     if (favoritesChanged) bleManager?.setFavorites(draftFavorites)
                     bleManager?.setColor(selectedRing, committedColor)
@@ -323,32 +315,6 @@ internal fun RingControllerApp(
 
             null -> Unit
         }
-    }
-}
-
-private fun colorsForScene(scene: ScenePreset, elapsedSeconds: Float): List<Color> = when (scene) {
-    ScenePreset.AmberChase -> {
-        val position = (elapsedSeconds * 1.65f) % 4f
-        List(4) { index ->
-            val directDistance = abs(index - position)
-            val circularDistance = min(directDistance, 4f - directDistance)
-            val intensity = (1f - circularDistance).coerceIn(0.08f, 1f)
-            Color(
-                red = intensity,
-                green = 0.47f * intensity,
-                blue = 0.015f * intensity,
-            )
-        }
-    }
-
-    ScenePreset.DemonPulse -> {
-        val wave = ((sin(elapsedSeconds * (2f * PI.toFloat() / 2.8f)) + 1f) / 2f)
-        val red = 0.25f + wave * 0.75f
-        List(4) { Color(red, 0.018f, 0.038f) }
-    }
-
-    ScenePreset.SpectrumWave -> List(4) { index ->
-        Color.hsv((elapsedSeconds * 62f + index * 52f) % 360f, 0.82f, 1f)
     }
 }
 
@@ -401,6 +367,7 @@ private fun ScenesScreen(
     selectedRing: Int?,
     brightness: Float,
     activeScene: ScenePreset?,
+    favoriteColors: List<Color>,
     connectionState: BleConnectionState,
     simplifiedPreview: Boolean,
     onRingSelected: (Int) -> Unit,
@@ -426,12 +393,17 @@ private fun ScenesScreen(
                 trailing = stringResource(R.string.parked_only),
             )
         }
-        items(ScenePreset.entries) { scene ->
-            SceneCard(
-                scene = scene,
-                selected = scene == activeScene,
-                onClick = { onSceneSelected(scene) },
-            )
+        SceneCategory.entries.forEach { category ->
+            val scenes = ScenePreset.entries.filter { it.category == category }
+            item { SceneCategoryHeader(category, scenes.size) }
+            items(scenes, key = { it.id }) { scene ->
+                SceneCard(
+                    scene = scene,
+                    favoriteColors = favoriteColors,
+                    selected = scene == activeScene,
+                    onClick = { onSceneSelected(scene) },
+                )
+            }
         }
         if (activeScene != null) {
             item {
@@ -1309,43 +1281,77 @@ private fun AdjustmentDialogFrame(
 }
 
 @Composable
+private fun SceneCategoryHeader(category: SceneCategory, sceneCount: Int) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 10.dp, start = 4.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text(
+            text = stringResource(category.titleRes).uppercase(),
+            color = AppOrange,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 1.1.sp,
+        )
+        Box(modifier = Modifier.height(1.dp).weight(1f).background(AppLine))
+        Text(
+            text = stringResource(R.string.scene_count, sceneCount),
+            color = AppMuted,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+        )
+    }
+}
+
+@Composable
 private fun SceneCard(
     scene: ScenePreset,
+    favoriteColors: List<Color>,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    val previewColors = when (scene) {
-        ScenePreset.AmberChase -> listOf(AppOrange, Color(0xFF512203), Color(0xFF512203), Color(0xFF512203))
-        ScenePreset.DemonPulse -> List(4) { Color(0xFFFF2545) }
-        ScenePreset.SpectrumWave -> listOf(
-            Color(0xFFFF3D67), Color(0xFFFFB000), Color(0xFF4EE08A), Color(0xFF478CFF),
-        )
-    }
-    Row(
+    val previewColors = colorsForScene(scene, scene.previewSeconds, favoriteColors)
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(if (selected) Color(0xFF211B17) else AppSurface, RoundedCornerShape(14.dp))
             .border(1.dp, if (selected) AppOrange else AppLine, RoundedCornerShape(14.dp))
             .clickable(onClick = onClick)
             .padding(14.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-            previewColors.forEach { color ->
-                Box(modifier = Modifier.size(20.dp).border(3.dp, color, CircleShape))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                previewColors.forEach { color ->
+                    Box(modifier = Modifier.size(20.dp).border(3.dp, color, CircleShape))
+                }
             }
-        }
-        Spacer(Modifier.width(14.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(stringResource(scene.titleRes), fontWeight = FontWeight.Bold)
-            Text(stringResource(scene.subtitleRes), color = AppMuted, fontSize = 11.sp)
+            Spacer(Modifier.width(14.dp))
+            Text(
+                text = stringResource(scene.titleRes),
+                modifier = Modifier.weight(1f),
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = stringResource(scene.badgeRes),
+                modifier = Modifier
+                    .background(
+                        if (selected) AppOrange.copy(alpha = 0.14f) else AppSurfaceRaised,
+                        RoundedCornerShape(7.dp),
+                    )
+                    .padding(horizontal = 8.dp, vertical = 5.dp),
+                color = if (selected) AppOrange else AppMuted,
+                fontWeight = FontWeight.Black,
+                fontSize = 8.sp,
+                letterSpacing = 0.8.sp,
+            )
         }
         Text(
-            text = stringResource(scene.badgeRes),
-            color = if (selected) AppOrange else AppMuted,
-            fontWeight = FontWeight.Black,
-            fontSize = 9.sp,
-            letterSpacing = 1.sp,
+            text = stringResource(scene.subtitleRes),
+            color = AppMuted,
+            fontSize = 11.sp,
         )
     }
 }

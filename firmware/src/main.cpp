@@ -17,7 +17,7 @@ namespace {
 using ringcontroller::pins::RgbPins;
 
 constexpr char kDeviceName[] = "D4WID-Ring";
-constexpr char kFirmwareVersion[] = "0.2.0";
+constexpr char kFirmwareVersion[] = "0.3.0";
 constexpr char kProtocolVersion[] = "1.0";
 constexpr char kServiceUuid[] = "7d2f0001-9c5a-4f28-b4d7-4b3a6d9a0001";
 constexpr char kCommandUuid[] = "7d2f0002-9c5a-4f28-b4d7-4b3a6d9a0001";
@@ -40,7 +40,26 @@ enum class Scene : int8_t {
     AmberChase = 0,
     DemonPulse = 1,
     SpectrumWave = 2,
+    HazardFlash = 3,
+    HazardDouble = 4,
+    InnerOuterAmber = 5,
+    LeftAmber = 6,
+    RightAmber = 7,
+    InwardSweep = 8,
+    OutwardSweep = 9,
+    BrightWhite = 10,
+    IceWhite = 11,
+    ChallengerAmber = 12,
+    CourtesyFade = 13,
+    AmberBreathing = 14,
+    RedlineChase = 15,
+    CyanScanner = 16,
+    SplitHorizon = 17,
+    MirrorRainbow = 18,
+    FavoriteCarousel = 19,
 };
+
+constexpr int8_t kMaximumSceneId = static_cast<int8_t>(Scene::FavoriteCarousel);
 
 struct RgbColor {
     uint8_t red;
@@ -205,28 +224,172 @@ RgbColor hsvToRgb(float hue, const float saturation, const float value) {
     };
 }
 
+RgbColor sceneColor(const RgbColor color, const float intensity) {
+    const float level = constrain(intensity, 0.0f, 1.0f);
+    return {
+        static_cast<uint8_t>(color.red * level),
+        static_cast<uint8_t>(color.green * level),
+        static_cast<uint8_t>(color.blue * level),
+    };
+}
+
+RgbColor blendSceneColors(const RgbColor from, const RgbColor to, const float progress) {
+    const float amount = constrain(progress, 0.0f, 1.0f);
+    return {
+        static_cast<uint8_t>(from.red + (to.red - from.red) * amount),
+        static_cast<uint8_t>(from.green + (to.green - from.green) * amount),
+        static_cast<uint8_t>(from.blue + (to.blue - from.blue) * amount),
+    };
+}
+
+float smoothProgress(const float progress) {
+    const float value = constrain(progress, 0.0f, 1.0f);
+    return value * value * (3.0f - 2.0f * value);
+}
+
+float breathingLevel(const float seconds, const float periodSeconds, const float minimum) {
+    const float wave = (sinf(seconds * (2.0f * PI / periodSeconds) - PI / 2.0f) + 1.0f) / 2.0f;
+    return minimum + wave * (1.0f - minimum);
+}
+
+float pingPongPosition(const float seconds, const float ringsPerSecond) {
+    const float phase = fmodf(seconds * ringsPerSecond, 6.0f);
+    return phase <= 3.0f ? phase : 6.0f - phase;
+}
+
+std::array<RgbColor, 4> runnerColors(
+    const float position,
+    const RgbColor color,
+    const float minimum,
+    const bool wraps
+) {
+    std::array<RgbColor, 4> colors{};
+    for (size_t index = 0; index < colors.size(); ++index) {
+        float distance = fabsf(static_cast<float>(index) - position);
+        if (wraps) distance = fminf(distance, 4.0f - distance);
+        colors[index] = sceneColor(color, fmaxf(minimum, 1.0f - distance * 0.78f));
+    }
+    return colors;
+}
+
 std::array<RgbColor, 4> sceneColors(const uint32_t nowMs) {
     const float seconds = (nowMs - sceneStartedAtMs) / 1000.0f;
     std::array<RgbColor, 4> colors{};
-    if (activeScene == static_cast<int8_t>(Scene::AmberChase)) {
-        const float position = fmodf(seconds * 1.65f, 4.0f);
-        for (size_t index = 0; index < colors.size(); ++index) {
-            const float direct = fabsf(static_cast<float>(index) - position);
-            const float distance = fminf(direct, 4.0f - direct);
-            const float intensity = fmaxf(0.08f, 1.0f - distance);
-            colors[index] = {
-                static_cast<uint8_t>(255.0f * intensity),
-                static_cast<uint8_t>(120.0f * intensity),
-                static_cast<uint8_t>(4.0f * intensity),
-            };
+    constexpr RgbColor off{0, 0, 0};
+    constexpr RgbColor amber{255, 106, 0};
+    constexpr RgbColor demonRed{255, 8, 18};
+    constexpr RgbColor cyan{0, 229, 229};
+    constexpr RgbColor violet{168, 85, 247};
+
+    switch (static_cast<Scene>(activeScene)) {
+        case Scene::AmberChase:
+            return runnerColors(fmodf(seconds * 1.65f, 4.0f), amber, 0.08f, true);
+
+        case Scene::DemonPulse:
+            colors.fill(sceneColor(demonRed, breathingLevel(seconds, 2.8f, 0.25f)));
+            break;
+
+        case Scene::SpectrumWave:
+            for (size_t index = 0; index < colors.size(); ++index) {
+                colors[index] = hsvToRgb(seconds * 62.0f + index * 52.0f, 0.82f, 1.0f);
+            }
+            break;
+
+        case Scene::HazardFlash:
+            colors.fill(fmodf(seconds, 1.0f) < 0.46f ? amber : off);
+            break;
+
+        case Scene::HazardDouble: {
+            const float phase = fmodf(seconds, 1.5f);
+            const bool illuminated = phase < 0.16f || (phase >= 0.31f && phase < 0.47f);
+            colors.fill(illuminated ? amber : off);
+            break;
         }
-    } else if (activeScene == static_cast<int8_t>(Scene::DemonPulse)) {
-        const float wave = (sinf(seconds * (2.0f * PI / 2.8f)) + 1.0f) / 2.0f;
-        const uint8_t red = static_cast<uint8_t>((0.25f + wave * 0.75f) * 255.0f);
-        colors.fill({red, 5, 10});
-    } else {
-        for (size_t index = 0; index < colors.size(); ++index) {
-            colors[index] = hsvToRgb(seconds * 62.0f + index * 52.0f, 0.82f, 1.0f);
+
+        case Scene::InnerOuterAmber: {
+            const float phase = fmodf(seconds, 1.0f);
+            if (phase < 0.42f) {
+                colors = {amber, off, off, amber};
+            } else if (phase >= 0.50f && phase < 0.92f) {
+                colors = {off, amber, amber, off};
+            }
+            break;
+        }
+
+        case Scene::LeftAmber:
+            if (fmodf(seconds, 1.0f) < 0.5f) colors = {amber, amber, off, off};
+            break;
+
+        case Scene::RightAmber:
+            if (fmodf(seconds, 1.0f) < 0.5f) colors = {off, off, amber, amber};
+            break;
+
+        case Scene::InwardSweep: {
+            const uint8_t step = static_cast<uint8_t>(fmodf(seconds, 1.45f) / 0.24f);
+            if (step == 0 || step == 2) colors = {amber, off, off, amber};
+            else if (step == 1 || step == 3) colors = {off, amber, amber, off};
+            break;
+        }
+
+        case Scene::OutwardSweep: {
+            const uint8_t step = static_cast<uint8_t>(fmodf(seconds, 1.45f) / 0.24f);
+            if (step == 0 || step == 2) colors = {off, amber, amber, off};
+            else if (step == 1 || step == 3) colors = {amber, off, off, amber};
+            break;
+        }
+
+        case Scene::BrightWhite:
+            colors.fill({255, 255, 255});
+            break;
+
+        case Scene::IceWhite:
+            colors.fill({205, 232, 255});
+            break;
+
+        case Scene::ChallengerAmber:
+            colors.fill(amber);
+            break;
+
+        case Scene::CourtesyFade:
+            colors.fill(sceneColor({246, 250, 255}, breathingLevel(seconds, 4.8f, 0.12f)));
+            break;
+
+        case Scene::AmberBreathing:
+            colors.fill(sceneColor(amber, breathingLevel(seconds, 3.4f, 0.10f)));
+            break;
+
+        case Scene::RedlineChase:
+            return runnerColors(pingPongPosition(seconds, 1.85f), demonRed, 0.025f, false);
+
+        case Scene::CyanScanner:
+            return runnerColors(pingPongPosition(seconds, 2.35f), cyan, 0.035f, false);
+
+        case Scene::SplitHorizon: {
+            const float left = breathingLevel(seconds, 3.2f, 0.32f);
+            const float right = breathingLevel(seconds + 1.6f, 3.2f, 0.32f);
+            colors = {
+                sceneColor(cyan, left), sceneColor(cyan, left),
+                sceneColor(violet, right), sceneColor(violet, right),
+            };
+            break;
+        }
+
+        case Scene::MirrorRainbow: {
+            const float hue = fmodf(seconds * 42.0f, 360.0f);
+            const RgbColor outer = hsvToRgb(hue, 0.82f, 1.0f);
+            const RgbColor inner = hsvToRgb(hue + 105.0f, 0.82f, 1.0f);
+            colors = {outer, inner, inner, outer};
+            break;
+        }
+
+        case Scene::FavoriteCarousel: {
+            if (favoriteCount == 0) break;
+            const float position = seconds / 2.6f;
+            const uint8_t current = static_cast<uint8_t>(floorf(position)) % favoriteCount;
+            const uint8_t next = (current + 1) % favoriteCount;
+            const float blend = smoothProgress(position - floorf(position));
+            colors.fill(blendSceneColors(favoriteColors[current], favoriteColors[next], blend));
+            break;
         }
     }
     return colors;
@@ -386,7 +549,7 @@ void handleBleCommand(String message) {
         }
     } else if (command == "SCENE") {
         const int scene = fieldAt(message, 1).toInt();
-        selectScene(scene >= 0 && scene <= 2 ? static_cast<int8_t>(scene) : kNoScene);
+        selectScene(scene >= 0 && scene <= kMaximumSceneId ? static_cast<int8_t>(scene) : kNoScene);
         scheduleLightStatePersistence();
     } else if (command == "FAVORITES") {
         setFavoritesFromCommand(fieldAt(message, 1));
@@ -456,7 +619,7 @@ void loadConfiguration() {
     forcedWhiteBrightness = preferences.getUChar("white", 255);
     globalBrightness = preferences.getUChar("brightness", 224);
     activeScene = preferences.getChar("scene", kNoScene);
-    if (activeScene < kNoScene || activeScene > 2) activeScene = kNoScene;
+    if (activeScene < kNoScene || activeScene > kMaximumSceneId) activeScene = kNoScene;
 
     if (preferences.getBytesLength("colors") == sizeof(ringColors)) {
         preferences.getBytes("colors", ringColors.data(), sizeof(ringColors));

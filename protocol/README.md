@@ -22,12 +22,35 @@ GET
 POWER|0|1
 BRIGHTNESS|0..255
 COLOR|target|RRGGBB
-SCENE|-1|0|1|2
+SCENE|-1|0..19
 FAVORITES|RRGGBB,RRGGBB,...
 VEHICLE|0|1
 ```
 
-The `POWER` syntax above means one final field containing either `0` or `1`, not two fields. `COLOR` target `0..3` selects one ring; target `255` selects all rings. `SCENE|-1` stops an effect; IDs `0`, `1`, and `2` are Amber Chase, Demon Pulse, and Spectrum Wave. Favorites contain 1–12 colors and define the physical-button cycle.
+The `POWER` syntax above means one final field containing either `0` or `1`, not two fields. `COLOR` target `0..3` selects one ring; target `255` selects all rings. `SCENE|-1` stops an effect; IDs `0..19` select one of the controller-rendered scenes below. Favorites contain 1–12 colors and define both the physical-button cycle and Scene 19.
+
+| ID | Scene | Behavior |
+|---:|---|---|
+| 0 | Amber Chase | One amber highlight runs around the four rings. |
+| 1 | Demon Pulse | All rings breathe in deep red. |
+| 2 | Spectrum Wave | A phase-shifted rainbow rolls across the rings. |
+| 3 | Hazard Flash | All four rings blink amber together. |
+| 4 | Double Hazard | Two quick all-amber flashes followed by a pause. |
+| 5 | Inner / Outer | Outer and inner amber pairs alternate. |
+| 6 | Left Amber | The two left rings blink amber together. |
+| 7 | Right Amber | The two right rings blink amber together. |
+| 8 | Inward Sweep | Repeated amber pair movement from the outside toward the grille. |
+| 9 | Outward Sweep | Repeated amber pair movement from the grille toward the outside. |
+| 10 | Bright White | Steady neutral white. |
+| 11 | Ice White | Steady cool white. |
+| 12 | Challenger Amber | Steady Dodge-inspired amber. |
+| 13 | Courtesy Fade | Slow soft-white welcome breathing. |
+| 14 | Amber Breathing | Slow warm amber breathing. |
+| 15 | Redline Chase | Deep-red ping-pong scanner. |
+| 16 | Cyan Scanner | Faster cyan ping-pong scanner with a tail. |
+| 17 | Split Horizon | Cyan left and violet right breathe in opposition. |
+| 18 | Mirror Rainbow | Outer and inner pairs rotate through offset hues. |
+| 19 | Favorite Carousel | Smoothly crossfades through the saved favorites. |
 
 Examples:
 
@@ -55,7 +78,7 @@ STATE|1.0|0.2.0|1|224|-1|0|0|1|00E5E5,00E5E5,00E5E5,00E5E5|F2F6FF,FF6A00,FF304E
 
 - `enabled`: saved user power state.
 - `brightness`: global brightness, `0..255`.
-- `scene`: `-1` for solid colors or `0..2` for a running scene.
+- `scene`: `-1` for solid colors or `0..19` for a running scene.
 - `override`: `1` while the configured vehicle input is overriding normal output.
 - `vehicleSignal`: debounced physical GPIO35 input state.
 - `vehicleAutomation`: whether the vehicle-input action is enabled.
@@ -71,6 +94,7 @@ The ESP32 stores power, brightness, four solid colors, active scene, favorites, 
 ## Compatibility
 
 - Protocol major/minor and firmware versions are present in every snapshot.
+- Scene IDs `0..2` retain their original protocol-1.0 meanings; the appended IDs `3..19` are backward-compatible additions.
 - Unknown commands are ignored and logged over USB serial.
 - Safety/off control remains available through `POWER|0`.
 - Future optional fields must be appended; incompatible field changes require protocol 2.x.

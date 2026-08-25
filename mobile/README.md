@@ -26,7 +26,7 @@ The current interactive dashboard includes:
 - Automatic BLE discovery for `D4WID-Ring`, persistent connection status in the header, and a detailed status card with firmware version.
 - Bidirectional protocol-1.0 synchronization: app changes are sent to the controller, while reconnects and physical input changes refresh power, colors, brightness, scene, favorites, and vehicle state from ESP32.
 - Compact Drive cards open the color and brightness editors instead of embedding gesture-heavy controls in the scrolling page.
-- Animated Amber Chase, Demon Pulse, and Spectrum Wave demonstrations.
+- A categorized library of 20 signal, everyday, and show scenes, with frame-synchronized previews and stable BLE IDs shared with firmware. The Favorite Carousel follows the editable saved palette.
 - Summaries of the physical-button and vehicle-signal rules.
 - English and Polish UI resources, selected automatically from the Android system language.
 - A branded Challenger/Bluetooth launcher icon with cyan/orange halos, legacy density variants, adaptive-icon masks, Android 13 monochrome theming, and a matching dark system splash screen.
