@@ -1,0 +1,29 @@
+# macOS and editors
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# PlatformIO
+firmware/.pio/
+firmware/.cache/
+
+# Android / Gradle
+mobile/.gradle/
+mobile/local.properties
+mobile/**/build/
+mobile/release.keystore
+*.jks
+*.keystore
+
+# Signing and secrets
+*.p12
+*.pem
+*.env
+.env
+
+# Generated release artifacts
+dist/
+*.apk
+*.aab
+
