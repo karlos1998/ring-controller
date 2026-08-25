@@ -15,5 +15,5 @@ All notable changes will be documented here.
 - Frame-synchronized, elapsed-time scene previews replace the previous 260 ms stepped animation loop.
 - Protocol-1.0 BLE service and Android GATT client with automatic discovery, connection status, command writes, state notifications, and authoritative reconnect synchronization.
 - ESP32 now stores and drives four independent colors, global brightness, editable favorites, and three local scenes while preserving physical-button and vehicle-input operation without a phone.
-- Hardware wiring and safety documentation.
+- Complete linked bill of materials, corrected 5 V regulator selection, BLE commissioning checks, and hardware wiring/safety documentation.
 - Continuous integration and tagged APK release workflow.

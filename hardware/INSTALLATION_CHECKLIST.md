@@ -2,6 +2,11 @@
 
 ## Bench verification
 
+- [ ] Firmware uploaded and `D4WID-Ring` BLE advertisement visible on the Android phone.
+- [ ] Android app connection status reaches Connected and initial ESP32 state appears in the UI.
+- [ ] A color, brightness, power, favorite, and scene change from the app is reflected by the ESP32 and returned in a state notification.
+- [ ] Physical-button changes appear in the connected app without reopening it.
+- [ ] Disconnect/reconnect restores the authoritative ESP32 state instead of stale app values.
 - [ ] Ring common-positive wiring verified with a meter.
 - [ ] HW-153 output-positive bus continuity verified while unpowered.
 - [ ] One ring tested from a current-limited bench supply.
@@ -30,6 +35,6 @@
 - [ ] Correct behavior with the alternator charging.
 - [ ] Physical button works with no phone connected.
 - [ ] Vehicle-signal automation works with no phone connected.
+- [ ] Android reconnects and resynchronizes after ESP32 power cycling and after leaving/re-entering BLE range.
 - [ ] ESP32 parked-current strategy measured and accepted.
 - [ ] Installation does not interfere with mandatory road lighting.
-

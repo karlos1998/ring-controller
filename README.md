@@ -2,7 +2,7 @@
 
 Android-controlled RGB halo-ring controller for a pre-facelift 2013 Dodge Challenger. The system replaces an unreliable aftermarket RGB controller with an ESP32-based controller, independently drives four 12 V common-anode RGB rings, mirrors the active color inside the cabin, and can apply a configurable action when a 12 V vehicle signal becomes active.
 
-> **Project status:** hardware prototype and interactive Android dashboard. The firmware provides favorite-color cycling, short/long physical-button handling, and an ignition/light-input override. Bluetooth synchronization is the next milestone.
+> **Project status:** buildable ESP32 firmware and Android dashboard with protocol-1.0 BLE control. The firmware provides independent ring colors, local scenes, editable favorite-color cycling, short/long physical-button handling, and an ignition/light-input override. Bench and in-vehicle hardware validation are still required.
 
 ## Repository layout
 
@@ -45,18 +45,20 @@ flowchart LR
     FSIG --> OPTO["PC817 12 V optoisolator"]
     OPTO -->|"active-low input"| ESP
     BTN["Momentary button"] --> ESP
-    PHONE["Android phone"] -. "BLE: planned" .-> ESP
+    PHONE["Android phone"] <-->|"BLE protocol 1.0"| ESP
 ```
 
 ## Known hardware
 
-- ESP32-WROOM-32 30-pin DevKitC-style board with CH340 and USB-C.
-- Four HW-153 V1.1 four-channel IRF540N optocoupled low-side MOSFET boards. One board is assigned to each RGB ring; its fourth channel remains spare.
+- [ESP32-WROOM-32 30-pin DevKitC-style board with CH340 and USB-C](https://allegro.pl/oferta/esp32-30pin-wifi-bluetooth-usb-c-ch340-esp-wroom-32-devkitc-v1-16920206271).
+- Four [HW-153 V1.1 four-channel IRF540N low-side MOSFET boards](https://allegro.pl/oferta/258-modul-4x-mosfet-irf540-irf540n-arduino-stm32-11148276256). One board is assigned to each RGB ring; its fourth channel remains spare.
 - Four 12 V analog RGB rings with one common positive wire and separate R/G/B negative returns.
-- One PC817/EL817 optoisolator module with a 12 V input and a 3.3 V-compatible transistor output.
+- One [PC817/EL817 optoisolator module with a 12 V input](https://allegro.pl/produkt/modul-optoizolatora-1-kanalowego-pc817-12v-e5123d84-65a7-4efe-84a9-f1782654e68e?offerId=18445276315) and a 3.3 V-compatible transistor output.
 - One momentary push button.
 - One cabin RGB indicator; its exact electrical type still needs to be confirmed before final wiring.
-- An automotive-protected 12 V → 5 V converter for the ESP32. Never connect the ESP32 directly to the battery.
+- A protected 12 V → 5 V converter for the ESP32. [Pololu S18V20F5 item 2574](https://www.pololu.com/product/2574) is the correct 5 V member of the discussed family; item 2577 outputs 12 V and must not power the ESP32. The regulator still needs a fused, transient-controlled automotive input. Never connect the ESP32 directly to the battery.
+
+The complete purchase and installation list, including fuses, wiring, protection, and still-unconfirmed cabin-indicator requirements, is in [hardware/BOM.md](hardware/BOM.md).
 
 ## ESP32 pin allocation
 
@@ -208,7 +210,7 @@ pio device monitor -d firmware --port /dev/cu.usbserial-10
 
 ### Android
 
-The Android app uses Kotlin, Jetpack Compose, minimum Android 8.0 (API 26), and application ID `it.letscode.ringcontroller`. Its Drive, Scenes, and Config tabs are available in English and Polish, selected automatically from the Android system language.
+The Android app uses Kotlin, Jetpack Compose, minimum Android 8.0 (API 26), and application ID `it.letscode.ringcontroller`. Its Drive, Scenes, and Config tabs are available in English and Polish, selected automatically from the Android system language. It scans for `D4WID-Ring`, displays connection state continuously, and synchronizes power, brightness, four colors, scenes, favorites, and vehicle-input state with the ESP32.
 
 ```bash
 cd mobile
@@ -235,12 +237,10 @@ The release workflow requires these repository secrets:
 
 The signing key must be backed up permanently. Losing it prevents future APKs from updating an already installed copy.
 
-## Planned behavior
+## Remaining planned work
 
-- Independent color and brightness for all four rings.
-- Solid colors, synchronized effects, and per-ring animations.
-- Editable physical-button favorites and configurable short/multiple/long press actions.
-- Configurable 12 V input automation, including force-white, apply preset, restore previous state, turn off, or ignore.
-- Settings stored in ESP32 non-volatile storage so automation works without the phone.
-- BLE configuration and control from the Android app.
+- Configurable short/multiple/long physical-button actions beyond the current fixed short/hold behavior.
+- Expanded 12 V input actions beyond the current enable/disable force-white behavior.
+- BLE bonding or an application-level authorization code before use outside a private prototype.
+- On-hardware BLE, PWM-polarity, current, thermal, and vehicle-transient validation.
 - Optional deep sleep/wake strategy to minimize parked-vehicle battery drain.
