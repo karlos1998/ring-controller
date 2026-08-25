@@ -17,7 +17,7 @@ The current interactive dashboard includes:
 
 - A tabbed Drive / Scenes / Config layout that keeps everyday controls separate from show modes and hardware behavior.
 - A four-halo front view matching the physical left/right layout.
-- Original scalable white 2013 Challenger front artwork with the four interactive halos placed inside the headlamp housings; the editable SVG source is `design/challenger-front.svg`.
+- A transparent raster cutout of the supplied white 2013 Challenger front reference, with the four interactive halos aligned to its real headlamp positions. Confirm redistribution rights for the supplied source image before publishing an APK or repository release.
 - Global and per-ring selection.
 - Favorite-color selection and brightness preview.
 - Animated Amber Chase, Demon Pulse, and Spectrum Wave demonstrations.

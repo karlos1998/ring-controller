@@ -520,18 +520,18 @@ private fun ChallengerFrontPreview(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(800f / 400f),
+            .aspectRatio(822f / 502f),
     ) {
         Image(
-            painter = painterResource(R.drawable.challenger_front),
+            painter = painterResource(R.drawable.challenger_front_reference),
             contentDescription = stringResource(R.string.challenger_preview_description),
             modifier = Modifier.matchParentSize(),
             contentScale = ContentScale.FillBounds,
         )
 
-        val haloSize = maxWidth * 0.132f
-        val centerY = maxHeight * 0.542f
-        val centers = listOf(0.181f, 0.305f, 0.695f, 0.819f)
+        val haloSize = maxWidth * 0.092f
+        val centerY = maxHeight * 0.466f
+        val centers = listOf(0.169f, 0.250f, 0.750f, 0.831f)
 
         centers.forEachIndexed { index, centerX ->
             RingHalo(
@@ -577,6 +577,10 @@ private fun RingHalo(
     ) {
         Canvas(Modifier.fillMaxSize()) {
             drawCircle(
+                color = Color(0xFF030405),
+                radius = size.minDimension * 0.47f,
+            )
+            drawCircle(
                 color = activeColor.copy(alpha = if (enabled) 0.18f else 0.05f),
                 radius = size.minDimension * 0.49f,
             )
@@ -596,15 +600,15 @@ private fun RingHalo(
             )
             if (hasAmberCenter) {
                 drawCircle(
-                    color = Color(0xFFFFE500).copy(alpha = if (enabled) 0.28f else 0.08f),
+                    color = Color(0xFFFFE500).copy(alpha = 0.28f),
                     radius = size.minDimension * 0.24f,
                 )
                 drawCircle(
-                    color = if (enabled) Color(0xFFFFE500) else Color(0xFF665E18),
+                    color = Color(0xFFFFE500),
                     radius = size.minDimension * 0.19f,
                 )
                 drawCircle(
-                    color = Color.White.copy(alpha = if (enabled) 0.7f else 0.15f),
+                    color = Color.White.copy(alpha = 0.7f),
                     radius = size.minDimension * 0.08f,
                     center = Offset(size.width * 0.44f, size.height * 0.43f),
                 )
