@@ -17,7 +17,7 @@ The current interactive dashboard includes:
 
 - A tabbed Drive / Scenes / Config layout that keeps everyday controls separate from show modes and hardware behavior.
 - A four-halo front view matching the physical left/right layout.
-- A transparent raster cutout of the supplied white 2013 Challenger front reference. A pixel-derived halo mask preserves the source rings' exact thin, partially occluded shape while allowing each lamp to be tinted independently; the original rough ground edge is replaced by an app-rendered soft shadow. Confirm redistribution rights for the supplied source image before publishing an APK or repository release.
+- A transparent raster cutout of the supplied white 2013 Challenger front reference. A pixel-derived halo mask preserves the source rings' exact thin, partially occluded shape while allowing each lamp to be tinted independently. A headlamp-clipped color glow emphasizes the live output without changing the ring geometry, while the original rough ground edge is replaced by an app-rendered soft shadow. Confirm redistribution rights for the supplied source image before publishing an APK or repository release.
 - Global and per-ring selection.
 - Favorite-color selection and brightness preview.
 - Animated Amber Chase, Demon Pulse, and Spectrum Wave demonstrations.

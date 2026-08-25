@@ -530,6 +530,13 @@ private fun ChallengerFrontPreview(
     ) {
         val carBitmap = ImageBitmap.imageResource(R.drawable.challenger_front_reference)
         val haloMaskBitmap = ImageBitmap.imageResource(R.drawable.challenger_halo_mask)
+        val haloCenters = listOf(0.169f, 0.250f, 0.750f, 0.831f)
+        val maskClipBounds = listOf(
+            floatArrayOf(0.105f, 0.395f, 0.205f, 0.565f),
+            floatArrayOf(0.205f, 0.395f, 0.315f, 0.565f),
+            floatArrayOf(0.685f, 0.395f, 0.795f, 0.565f),
+            floatArrayOf(0.795f, 0.395f, 0.895f, 0.565f),
+        )
 
         Canvas(Modifier.matchParentSize()) {
             drawOval(
@@ -549,47 +556,78 @@ private fun ChallengerFrontPreview(
             contentDescription = stringResource(R.string.challenger_preview_description),
             modifier = Modifier.matchParentSize(),
             contentScale = ContentScale.FillBounds,
+            alpha = 0.82f,
             filterQuality = FilterQuality.High,
         )
 
-        val maskClipBounds = listOf(
-            floatArrayOf(0.105f, 0.395f, 0.205f, 0.565f),
-            floatArrayOf(0.205f, 0.395f, 0.315f, 0.565f),
-            floatArrayOf(0.685f, 0.395f, 0.795f, 0.565f),
-            floatArrayOf(0.795f, 0.395f, 0.895f, 0.565f),
-        )
+        Canvas(Modifier.matchParentSize()) {
+            clipRect(
+                left = size.width * 0.095f,
+                top = size.height * 0.405f,
+                right = size.width * 0.905f,
+                bottom = size.height * 0.56f,
+            ) {
+                haloCenters.forEachIndexed { index, centerX ->
+                    val haloColor = if (enabled) colors[index] else Color(0xFF343842)
+                    val emphasized = selectedRing == null || selectedRing == index
+                    val glowAlpha = when {
+                        !enabled -> 0.04f
+                        emphasized -> 0.34f
+                        else -> 0.20f
+                    }
+                    val center = Offset(size.width * centerX, size.height * 0.472f)
+                    val radius = size.width * 0.055f
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                haloColor.copy(alpha = glowAlpha),
+                                haloColor.copy(alpha = glowAlpha * 0.48f),
+                                Color.Transparent,
+                            ),
+                            center = center,
+                            radius = radius,
+                        ),
+                        center = center,
+                        radius = radius,
+                    )
+                }
+            }
+        }
 
         maskClipBounds.forEachIndexed { index, bounds ->
-            Image(
-                bitmap = haloMaskBitmap,
-                contentDescription = null,
-                modifier = Modifier
-                    .matchParentSize()
-                    .drawWithContent {
-                        clipRect(
-                            left = size.width * bounds[0],
-                            top = size.height * bounds[1],
-                            right = size.width * bounds[2],
-                            bottom = size.height * bounds[3],
-                        ) {
-                            this@drawWithContent.drawContent()
-                        }
-                    },
-                contentScale = ContentScale.FillBounds,
-                filterQuality = FilterQuality.High,
-                colorFilter = ColorFilter.tint(
-                    color = if (enabled) colors[index] else Color(0xFF343842),
-                    blendMode = BlendMode.SrcIn,
-                ),
-            )
+            val haloColor = if (enabled) colors[index] else Color(0xFF343842)
+            listOf(0.62f, 1f).forEach { layerAlpha ->
+                Image(
+                    bitmap = haloMaskBitmap,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .matchParentSize()
+                        .drawWithContent {
+                            clipRect(
+                                left = size.width * bounds[0],
+                                top = size.height * bounds[1],
+                                right = size.width * bounds[2],
+                                bottom = size.height * bounds[3],
+                            ) {
+                                this@drawWithContent.drawContent()
+                            }
+                        },
+                    contentScale = ContentScale.FillBounds,
+                    alpha = layerAlpha,
+                    filterQuality = FilterQuality.High,
+                    colorFilter = ColorFilter.tint(
+                        color = haloColor,
+                        blendMode = BlendMode.SrcIn,
+                    ),
+                )
+            }
         }
 
         val hitWidth = maxWidth * 0.085f
         val hitHeight = maxHeight * 0.135f
         val centerY = maxHeight * 0.472f
-        val centers = listOf(0.169f, 0.250f, 0.750f, 0.831f)
 
-        centers.forEachIndexed { index, centerX ->
+        haloCenters.forEachIndexed { index, centerX ->
             RingHitTarget(
                 index = index,
                 selected = selectedRing == index,
