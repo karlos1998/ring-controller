@@ -45,10 +45,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -78,7 +78,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.delay
+import kotlin.math.PI
+import kotlin.math.abs
+import kotlin.math.min
 import kotlin.math.sin
 
 private val AppBackground = Color(0xFF08090C)
@@ -136,33 +138,19 @@ fun RingControllerApp() {
     var ringColors by remember { mutableStateOf(List(4) { AppCyan }) }
     var brightness by remember { mutableFloatStateOf(0.88f) }
     var activeScene by remember { mutableStateOf<ScenePreset?>(null) }
-    var sceneStep by remember { mutableIntStateOf(0) }
     var vehicleAutomationEnabled by remember { mutableStateOf(true) }
     var favoriteColors by remember { mutableStateOf(defaultFavoriteColors) }
 
     LaunchedEffect(activeScene, ringsEnabled) {
-        sceneStep = 0
-        while (activeScene != null && ringsEnabled) {
-            val step = sceneStep
-            ringColors = when (activeScene) {
-                ScenePreset.AmberChase -> List(4) { index ->
-                    if (index == step % 4) Color(0xFFFF7900) else Color(0xFF351503)
-                }
-
-                ScenePreset.DemonPulse -> {
-                    val wave = ((sin(step / 2.0) + 1.0) / 2.0).toFloat()
-                    val red = 0.28f + wave * 0.72f
-                    List(4) { Color(red, 0.025f, 0.045f) }
-                }
-
-                ScenePreset.SpectrumWave -> List(4) { index ->
-                    Color.hsv((step * 16f + index * 52f) % 360f, 0.82f, 1f)
-                }
-
-                null -> ringColors
+        val scene = activeScene ?: return@LaunchedEffect
+        if (!ringsEnabled) return@LaunchedEffect
+        var startedAtNanos = 0L
+        while (activeScene == scene && ringsEnabled) {
+            withFrameNanos { frameTimeNanos ->
+                if (startedAtNanos == 0L) startedAtNanos = frameTimeNanos
+                val elapsedSeconds = (frameTimeNanos - startedAtNanos) / 1_000_000_000f
+                ringColors = colorsForScene(scene, elapsedSeconds)
             }
-            sceneStep++
-            delay(260)
         }
     }
 
@@ -232,6 +220,32 @@ fun RingControllerApp() {
                 )
             }
         }
+    }
+}
+
+private fun colorsForScene(scene: ScenePreset, elapsedSeconds: Float): List<Color> = when (scene) {
+    ScenePreset.AmberChase -> {
+        val position = (elapsedSeconds * 1.65f) % 4f
+        List(4) { index ->
+            val directDistance = abs(index - position)
+            val circularDistance = min(directDistance, 4f - directDistance)
+            val intensity = (1f - circularDistance).coerceIn(0.08f, 1f)
+            Color(
+                red = intensity,
+                green = 0.47f * intensity,
+                blue = 0.015f * intensity,
+            )
+        }
+    }
+
+    ScenePreset.DemonPulse -> {
+        val wave = ((sin(elapsedSeconds * (2f * PI.toFloat() / 2.8f)) + 1f) / 2f)
+        val red = 0.25f + wave * 0.75f
+        List(4) { Color(red, 0.018f, 0.038f) }
+    }
+
+    ScenePreset.SpectrumWave -> List(4) { index ->
+        Color.hsv((elapsedSeconds * 62f + index * 52f) % 360f, 0.82f, 1f)
     }
 }
 

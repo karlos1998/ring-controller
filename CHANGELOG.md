@@ -12,5 +12,6 @@ All notable changes will be documented here.
 - Pixel-accurate per-ring tint masks and a clean app-rendered vehicle shadow replace the oversized circular overlays and rough source-image ground edge.
 - Stronger headlamp-clipped ambient glows and a subtly desaturated vehicle layer make live ring colors easier to read without enlarging the ring artwork.
 - Full-spectrum HSV/HEX color picker and editable 12-slot favorite-color collection.
+- Frame-synchronized, elapsed-time scene previews replace the previous 260 ms stepped animation loop.
 - Hardware wiring and safety documentation.
 - Continuous integration and tagged APK release workflow.

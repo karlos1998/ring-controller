@@ -21,6 +21,7 @@ The current interactive dashboard includes:
 - Global and per-ring selection.
 - A full HSV color field, hue strip, and exact six-digit HEX input for choosing any RGB color.
 - An editable Favorites tab with up to 12 colors that can be saved from the picker, applied, or removed.
+- Scene previews are calculated from elapsed time and synchronized to display frames for smooth 30+ FPS motion instead of coarse timer steps.
 - Favorite-color selection and brightness preview.
 - Animated Amber Chase, Demon Pulse, and Spectrum Wave demonstrations.
 - Summaries of the physical-button and vehicle-signal rules.
