@@ -44,7 +44,7 @@
     <string name="color_violet">Fiolet</string>
     <string name="color_cyan">Cyjan</string>
     <string name="color_green">Zielony</string>
-    <string name="brightness">Jasność</string>
+    <string name="color_and_brightness">Kolor i jasność</string>
     <string name="color_picker_tab">Kolor</string>
     <string name="favorites_tab">Ulubione</string>
     <string name="full_color_spectrum">PEŁNE SPEKTRUM KOLORÓW</string>
@@ -55,15 +55,11 @@
     <string name="remove_favorite">USUŃ</string>
     <string name="choose_first_favorite">Wybierz kolor i zapisz pierwszy ulubiony</string>
     <string name="tap_to_open_palette">Dotknij, aby otworzyć paletę</string>
-    <string name="tap_to_adjust_brightness">Dotknij, aby podejrzeć i ustawić</string>
+    <string name="color_brightness_summary">Paleta kolorów · %1$d%%</string>
     <string name="change_action">ZMIEŃ</string>
     <string name="open_color_editor_description">Otwórz wybór koloru</string>
-    <string name="open_brightness_editor_description">Otwórz ustawienie jasności</string>
     <string name="color_editor_title">Wybierz kolor</string>
-    <string name="brightness_editor_title">Ustaw jasność</string>
     <string name="brightness_slider_description">Jasność ringów</string>
-    <string name="glow_strength">Siła świecenia</string>
-    <string name="brightness_preview_hint">Podgląd powyżej pokazuje wybraną siłę świecenia.</string>
     <string name="preview_changes">PODGLĄD NA ŻYWO</string>
     <string name="cancel_action">ANULUJ</string>
     <string name="save_action">ZAPISZ</string>

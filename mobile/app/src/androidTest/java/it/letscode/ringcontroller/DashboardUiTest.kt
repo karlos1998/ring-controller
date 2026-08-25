@@ -28,6 +28,9 @@ class DashboardUiTest {
         composeRule.onNodeWithContentDescription(
             context.getString(R.string.open_color_editor_description),
         ).performScrollTo().performClick()
+        composeRule.onNodeWithContentDescription(
+            context.getString(R.string.brightness_slider_description),
+        ).assertExists()
         composeRule.onNodeWithText(context.getString(R.string.favorites_tab).uppercase()).performClick()
         composeRule.onNodeWithContentDescription(
             context.getString(R.string.apply_color_description, favoriteHex),
