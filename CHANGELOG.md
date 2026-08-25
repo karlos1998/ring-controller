@@ -13,5 +13,7 @@ All notable changes will be documented here.
 - Stronger headlamp-clipped ambient glows and a subtly desaturated vehicle layer make live ring colors easier to read without enlarging the ring artwork.
 - Full-spectrum HSV/HEX color picker and editable 12-slot favorite-color collection.
 - Frame-synchronized, elapsed-time scene previews replace the previous 260 ms stepped animation loop.
+- Protocol-1.0 BLE service and Android GATT client with automatic discovery, connection status, command writes, state notifications, and authoritative reconnect synchronization.
+- ESP32 now stores and drives four independent colors, global brightness, editable favorites, and three local scenes while preserving physical-button and vehicle-input operation without a phone.
 - Hardware wiring and safety documentation.
 - Continuous integration and tagged APK release workflow.

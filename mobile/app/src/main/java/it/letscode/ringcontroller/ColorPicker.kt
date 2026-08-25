@@ -384,13 +384,15 @@ private fun FavoriteEditor(
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(hex, color = PickerMuted, fontSize = 8.sp)
-                        Text(
-                            text = stringResource(R.string.remove_favorite),
-                            modifier = Modifier.clickable { onFavoriteRemoved(index) }.padding(3.dp),
-                            color = Color(0xFFFF6B78),
-                            fontSize = 8.sp,
-                            fontWeight = FontWeight.Bold,
-                        )
+                        if (favorites.size > 1) {
+                            Text(
+                                text = stringResource(R.string.remove_favorite),
+                                modifier = Modifier.clickable { onFavoriteRemoved(index) }.padding(3.dp),
+                                color = Color(0xFFFF6B78),
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
                     }
                 }
             }

@@ -131,7 +131,9 @@ private val defaultFavoriteColors = listOf(
 )
 
 @Composable
-fun RingControllerApp() {
+internal fun RingControllerApp(bleManager: RingBleManager? = null) {
+    val connectionState = bleManager?.connectionState ?: BleConnectionState.LocalDemo
+    val controllerSnapshot = bleManager?.snapshot
     var currentTab by remember { mutableStateOf(DashboardTab.Drive) }
     var ringsEnabled by remember { mutableStateOf(true) }
     var selectedRing by remember { mutableStateOf<Int?>(null) }
@@ -140,6 +142,18 @@ fun RingControllerApp() {
     var activeScene by remember { mutableStateOf<ScenePreset?>(null) }
     var vehicleAutomationEnabled by remember { mutableStateOf(true) }
     var favoriteColors by remember { mutableStateOf(defaultFavoriteColors) }
+
+    LaunchedEffect(controllerSnapshot) {
+        val controller = controllerSnapshot ?: return@LaunchedEffect
+        ringsEnabled = controller.enabled || controller.vehicleOverrideActive
+        brightness = controller.brightness / 255f
+        activeScene = if (controller.vehicleOverrideActive) null
+        else controller.scene?.let { ScenePreset.entries.getOrNull(it) }
+        ringColors = if (controller.vehicleOverrideActive) List(4) { Color.White }
+        else controller.ringColors
+        vehicleAutomationEnabled = controller.vehicleAutomationEnabled
+        if (controller.favorites.isNotEmpty()) favoriteColors = controller.favorites
+    }
 
     LaunchedEffect(activeScene, ringsEnabled) {
         val scene = activeScene ?: return@LaunchedEffect
@@ -155,6 +169,7 @@ fun RingControllerApp() {
     }
 
     fun applyFavorite(color: Color) {
+        if (activeScene != null) bleManager?.setScene(null)
         activeScene = null
         ringColors = if (selectedRing == null) {
             List(4) { color }
@@ -163,6 +178,7 @@ fun RingControllerApp() {
                 if (index == selectedRing) color else current
             }
         }
+        bleManager?.setColor(selectedRing, color)
     }
 
     MaterialTheme(colorScheme = AppColors) {
@@ -183,20 +199,31 @@ fun RingControllerApp() {
                     selectedRing = selectedRing,
                     brightness = brightness,
                     activeScene = activeScene,
+                    connectionState = connectionState,
                     onRingSelected = { selectedRing = it },
-                    onPowerClick = { ringsEnabled = !ringsEnabled },
+                    onPowerClick = {
+                        ringsEnabled = !ringsEnabled
+                        bleManager?.setPower(ringsEnabled)
+                    },
                     onTargetSelected = { selectedRing = it },
                     onColorSelected = ::applyFavorite,
                     favoriteColors = favoriteColors,
                     onFavoriteAdded = { color ->
                         if (favoriteColors.size < 12 && favoriteColors.none { it.toHex() == color.toHex() }) {
                             favoriteColors = favoriteColors + color
+                            bleManager?.setFavorites(favoriteColors)
                         }
                     },
                     onFavoriteRemoved = { index ->
-                        favoriteColors = favoriteColors.filterIndexed { itemIndex, _ -> itemIndex != index }
+                        if (favoriteColors.size > 1) {
+                            favoriteColors = favoriteColors.filterIndexed { itemIndex, _ -> itemIndex != index }
+                            bleManager?.setFavorites(favoriteColors)
+                        }
                     },
-                    onBrightnessChanged = { brightness = it },
+                    onBrightnessChanged = {
+                        brightness = it
+                        bleManager?.setBrightness(it)
+                    },
                 )
 
                 DashboardTab.Scenes -> ScenesScreen(
@@ -205,18 +232,30 @@ fun RingControllerApp() {
                     ringColors = ringColors,
                     selectedRing = selectedRing,
                     activeScene = activeScene,
+                    connectionState = connectionState,
                     onRingSelected = { selectedRing = it },
                     onSceneSelected = { scene ->
                         activeScene = scene
                         ringsEnabled = true
+                        bleManager?.setScene(scene.ordinal)
                     },
-                    onStopScene = { activeScene = null },
+                    onStopScene = {
+                        activeScene = null
+                        bleManager?.setScene(null)
+                    },
                 )
 
                 DashboardTab.Config -> ConfigScreen(
                     modifier = Modifier.padding(padding),
+                    connectionState = connectionState,
+                    deviceName = bleManager?.deviceName ?: BleProtocol.DEVICE_NAME,
+                    firmwareVersion = controllerSnapshot?.firmwareVersion,
+                    onReconnect = { bleManager?.start() },
                     vehicleAutomationEnabled = vehicleAutomationEnabled,
-                    onVehicleAutomationChanged = { vehicleAutomationEnabled = it },
+                    onVehicleAutomationChanged = {
+                        vehicleAutomationEnabled = it
+                        bleManager?.setVehicleAutomation(it)
+                    },
                 )
             }
         }
@@ -257,6 +296,7 @@ private fun DriveScreen(
     selectedRing: Int?,
     brightness: Float,
     activeScene: ScenePreset?,
+    connectionState: BleConnectionState,
     onRingSelected: (Int) -> Unit,
     onPowerClick: () -> Unit,
     onTargetSelected: (Int?) -> Unit,
@@ -267,7 +307,7 @@ private fun DriveScreen(
     onBrightnessChanged: (Float) -> Unit,
 ) {
     ScreenColumn(modifier) {
-        item { AppHeader() }
+        item { AppHeader(connectionState = connectionState) }
         item {
             HaloDashboard(
                 enabled = ringsEnabled,
@@ -299,12 +339,13 @@ private fun ScenesScreen(
     ringColors: List<Color>,
     selectedRing: Int?,
     activeScene: ScenePreset?,
+    connectionState: BleConnectionState,
     onRingSelected: (Int) -> Unit,
     onSceneSelected: (ScenePreset) -> Unit,
     onStopScene: () -> Unit,
 ) {
     ScreenColumn(modifier) {
-        item { AppHeader(sectionRes = R.string.nav_scenes) }
+        item { AppHeader(sectionRes = R.string.nav_scenes, connectionState = connectionState) }
         item {
             CompactCarPreview(
                 enabled = ringsEnabled,
@@ -348,12 +389,23 @@ private fun ScenesScreen(
 @Composable
 private fun ConfigScreen(
     modifier: Modifier,
+    connectionState: BleConnectionState,
+    deviceName: String,
+    firmwareVersion: String?,
+    onReconnect: () -> Unit,
     vehicleAutomationEnabled: Boolean,
     onVehicleAutomationChanged: (Boolean) -> Unit,
 ) {
     ScreenColumn(modifier) {
-        item { AppHeader(sectionRes = R.string.nav_config) }
-        item { ControllerStatusCard() }
+        item { AppHeader(sectionRes = R.string.nav_config, connectionState = connectionState) }
+        item {
+            ControllerStatusCard(
+                connectionState = connectionState,
+                deviceName = deviceName,
+                firmwareVersion = firmwareVersion,
+                onReconnect = onReconnect,
+            )
+        }
         item {
             SectionHeader(
                 title = stringResource(R.string.input_rules),
@@ -384,7 +436,10 @@ private fun ScreenColumn(
 }
 
 @Composable
-private fun AppHeader(@StringRes sectionRes: Int? = null) {
+private fun AppHeader(
+    @StringRes sectionRes: Int? = null,
+    connectionState: BleConnectionState,
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -425,8 +480,8 @@ private fun AppHeader(@StringRes sectionRes: Int? = null) {
                 letterSpacing = 0.7.sp,
             )
             Text(
-                text = stringResource(R.string.demo_mode),
-                color = Color(0xFF52D995),
+                text = connectionState.label().uppercase(),
+                color = connectionState.color(),
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 1.2.sp,
@@ -842,7 +897,27 @@ private fun SceneCard(
 }
 
 @Composable
-private fun ControllerStatusCard() {
+private fun ControllerStatusCard(
+    connectionState: BleConnectionState,
+    deviceName: String,
+    firmwareVersion: String?,
+    onReconnect: () -> Unit,
+) {
+    val connected = connectionState == BleConnectionState.Connected
+    val subtitle = when (connectionState) {
+        BleConnectionState.Connected -> stringResource(
+            R.string.controller_status_connected,
+            deviceName,
+            firmwareVersion ?: "–",
+        )
+        BleConnectionState.Scanning -> stringResource(R.string.controller_status_scanning)
+        BleConnectionState.Connecting -> stringResource(R.string.controller_status_connecting)
+        BleConnectionState.PermissionRequired -> stringResource(R.string.controller_status_permission)
+        BleConnectionState.BluetoothOff -> stringResource(R.string.controller_status_bluetooth_off)
+        BleConnectionState.Unsupported -> stringResource(R.string.controller_status_unsupported)
+        BleConnectionState.Disconnected -> stringResource(R.string.controller_status_disconnected)
+        BleConnectionState.LocalDemo -> stringResource(R.string.controller_status_demo)
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -854,21 +929,59 @@ private fun ControllerStatusCard() {
         Box(
             modifier = Modifier
                 .size(10.dp)
-                .background(Color(0xFF52D995), CircleShape),
+                .background(connectionState.color(), CircleShape),
         )
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(stringResource(R.string.controller_status_title), fontWeight = FontWeight.Bold)
-            Text(stringResource(R.string.controller_status_demo), color = AppMuted, fontSize = 11.sp)
+            Text(subtitle, color = AppMuted, fontSize = 11.sp)
         }
-        Text(
-            stringResource(R.string.local_demo),
-            color = Color(0xFF52D995),
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = 0.8.sp,
-        )
+        if (connected || connectionState == BleConnectionState.LocalDemo) {
+            Text(
+                connectionState.label().uppercase(),
+                color = connectionState.color(),
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 0.8.sp,
+            )
+        } else {
+            Button(
+                onClick = onReconnect,
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = AppOrange,
+                    contentColor = Color.Black,
+                ),
+                contentPadding = PaddingValues(horizontal = 12.dp),
+            ) {
+                Text(stringResource(R.string.connect_retry), fontWeight = FontWeight.Black, fontSize = 9.sp)
+            }
+        }
     }
+}
+
+@Composable
+private fun BleConnectionState.label(): String = stringResource(
+    when (this) {
+        BleConnectionState.LocalDemo -> R.string.connection_local
+        BleConnectionState.PermissionRequired -> R.string.connection_permission
+        BleConnectionState.BluetoothOff -> R.string.connection_bluetooth_off
+        BleConnectionState.Unsupported -> R.string.connection_unsupported
+        BleConnectionState.Scanning -> R.string.connection_scanning
+        BleConnectionState.Connecting -> R.string.connection_connecting
+        BleConnectionState.Connected -> R.string.connection_connected
+        BleConnectionState.Disconnected -> R.string.connection_disconnected
+    },
+)
+
+private fun BleConnectionState.color(): Color = when (this) {
+    BleConnectionState.Connected, BleConnectionState.LocalDemo -> Color(0xFF52D995)
+    BleConnectionState.Scanning, BleConnectionState.Connecting -> Color(0xFFFFB347)
+    BleConnectionState.PermissionRequired,
+    BleConnectionState.BluetoothOff,
+    BleConnectionState.Unsupported,
+    BleConnectionState.Disconnected,
+    -> Color(0xFFFF6B78)
 }
 
 @Composable

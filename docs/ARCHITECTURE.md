@@ -20,7 +20,7 @@ flowchart LR
 2. **Light engine** — RGB values, ring groups, effects, brightness, and cabin indication.
 3. **State machine** — user enable state, temporary overrides, and restoration behavior.
 4. **Configuration** — values persisted to ESP32 NVS.
-5. **Transport** — versioned BLE service (planned).
+5. **Transport** — versioned BLE GATT service with command writes and authoritative state notifications.
 
 Priority order for output decisions:
 
@@ -37,7 +37,7 @@ Default physical-button behavior is short press to turn on or advance to the nex
 1. Compose UI.
 2. View models and immutable screen state.
 3. Ring Controller domain models.
-4. BLE repository and protocol codec (planned).
+4. BLE manager and protocol codec with scanning, reconnect, MTU negotiation, command throttling, and state synchronization.
 5. Local cache for UI convenience; ESP32 remains authoritative.
 
 ## Release model
