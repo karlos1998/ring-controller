@@ -52,23 +52,29 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
@@ -522,106 +528,99 @@ private fun ChallengerFrontPreview(
             .fillMaxWidth()
             .aspectRatio(822f / 502f),
     ) {
+        val carBitmap = ImageBitmap.imageResource(R.drawable.challenger_front_reference)
+        val haloMaskBitmap = ImageBitmap.imageResource(R.drawable.challenger_halo_mask)
+
+        Canvas(Modifier.matchParentSize()) {
+            drawOval(
+                color = Color.Black.copy(alpha = 0.32f),
+                topLeft = Offset(size.width * 0.12f, size.height * 0.842f),
+                size = Size(size.width * 0.76f, size.height * 0.052f),
+            )
+            drawOval(
+                color = Color.Black.copy(alpha = 0.16f),
+                topLeft = Offset(size.width * 0.08f, size.height * 0.83f),
+                size = Size(size.width * 0.84f, size.height * 0.082f),
+            )
+        }
+
         Image(
-            painter = painterResource(R.drawable.challenger_front_reference),
+            bitmap = carBitmap,
             contentDescription = stringResource(R.string.challenger_preview_description),
             modifier = Modifier.matchParentSize(),
             contentScale = ContentScale.FillBounds,
+            filterQuality = FilterQuality.High,
         )
 
-        val haloSize = maxWidth * 0.092f
-        val centerY = maxHeight * 0.466f
+        val maskClipBounds = listOf(
+            floatArrayOf(0.105f, 0.395f, 0.205f, 0.565f),
+            floatArrayOf(0.205f, 0.395f, 0.315f, 0.565f),
+            floatArrayOf(0.685f, 0.395f, 0.795f, 0.565f),
+            floatArrayOf(0.795f, 0.395f, 0.895f, 0.565f),
+        )
+
+        maskClipBounds.forEachIndexed { index, bounds ->
+            Image(
+                bitmap = haloMaskBitmap,
+                contentDescription = null,
+                modifier = Modifier
+                    .matchParentSize()
+                    .drawWithContent {
+                        clipRect(
+                            left = size.width * bounds[0],
+                            top = size.height * bounds[1],
+                            right = size.width * bounds[2],
+                            bottom = size.height * bounds[3],
+                        ) {
+                            this@drawWithContent.drawContent()
+                        }
+                    },
+                contentScale = ContentScale.FillBounds,
+                filterQuality = FilterQuality.High,
+                colorFilter = ColorFilter.tint(
+                    color = if (enabled) colors[index] else Color(0xFF343842),
+                    blendMode = BlendMode.SrcIn,
+                ),
+            )
+        }
+
+        val hitWidth = maxWidth * 0.085f
+        val hitHeight = maxHeight * 0.135f
+        val centerY = maxHeight * 0.472f
         val centers = listOf(0.169f, 0.250f, 0.750f, 0.831f)
 
         centers.forEachIndexed { index, centerX ->
-            RingHalo(
+            RingHitTarget(
                 index = index,
-                color = colors[index],
-                enabled = enabled,
                 selected = selectedRing == index,
-                hasAmberCenter = index == 0 || index == 3,
                 onSelected = onRingSelected,
-                diameter = haloSize,
                 modifier = Modifier.offset(
-                    x = maxWidth * centerX - haloSize / 2,
-                    y = centerY - haloSize / 2,
-                ),
+                    x = maxWidth * centerX - hitWidth / 2,
+                    y = centerY - hitHeight / 2,
+                )
+                    .width(hitWidth)
+                    .height(hitHeight),
             )
         }
     }
 }
 
 @Composable
-private fun RingHalo(
+private fun RingHitTarget(
     index: Int,
-    color: Color,
-    enabled: Boolean,
     selected: Boolean,
-    hasAmberCenter: Boolean,
     onSelected: (Int) -> Unit,
-    diameter: Dp,
     modifier: Modifier = Modifier,
 ) {
-    val activeColor = if (enabled) color else Color(0xFF353941)
     val ringDescription = stringResource(R.string.ring_description, index + 1)
     Box(
         modifier = modifier
-            .size(diameter)
-            .clip(CircleShape)
             .semantics {
                 contentDescription = ringDescription
                 this.selected = selected
             }
             .clickable { onSelected(index) },
-        contentAlignment = Alignment.Center,
-    ) {
-        Canvas(Modifier.fillMaxSize()) {
-            drawCircle(
-                color = Color(0xFF030405),
-                radius = size.minDimension * 0.47f,
-            )
-            drawCircle(
-                color = activeColor.copy(alpha = if (enabled) 0.18f else 0.05f),
-                radius = size.minDimension * 0.49f,
-            )
-            drawCircle(
-                color = activeColor.copy(alpha = if (enabled) 0.32f else 0.08f),
-                radius = size.minDimension * 0.39f,
-                style = Stroke(width = 10.dp.toPx()),
-            )
-            drawCircle(
-                color = activeColor,
-                radius = size.minDimension * 0.36f,
-                style = Stroke(width = 3.6.dp.toPx(), cap = StrokeCap.Round),
-            )
-            drawCircle(
-                color = if (hasAmberCenter) Color(0xFF2A2102) else Color(0xFF050609),
-                radius = size.minDimension * 0.245f,
-            )
-            if (hasAmberCenter) {
-                drawCircle(
-                    color = Color(0xFFFFE500).copy(alpha = 0.28f),
-                    radius = size.minDimension * 0.24f,
-                )
-                drawCircle(
-                    color = Color(0xFFFFE500),
-                    radius = size.minDimension * 0.19f,
-                )
-                drawCircle(
-                    color = Color.White.copy(alpha = 0.7f),
-                    radius = size.minDimension * 0.08f,
-                    center = Offset(size.width * 0.44f, size.height * 0.43f),
-                )
-            }
-            if (selected) {
-                drawCircle(
-                    color = Color.White.copy(alpha = 0.9f),
-                    radius = size.minDimension * 0.49f,
-                    style = Stroke(width = 1.dp.toPx()),
-                )
-            }
-        }
-    }
+    )
 }
 
 @Composable
