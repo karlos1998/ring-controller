@@ -11,6 +11,10 @@ import androidx.activity.enableEdgeToEdge
 class MainActivity : ComponentActivity() {
     private lateinit var bleManager: RingBleManager
 
+    private val appPreferences by lazy {
+        getSharedPreferences("d4wid_ring_ui", MODE_PRIVATE)
+    }
+
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
     ) { permissions ->
@@ -21,7 +25,15 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         bleManager = RingBleManager(applicationContext)
         enableEdgeToEdge()
-        setContent { RingControllerApp(bleManager) }
+        setContent {
+            RingControllerApp(
+                bleManager = bleManager,
+                initialSimplifiedPreview = appPreferences.getBoolean("simplified_preview", false),
+                onSimplifiedPreviewChanged = { enabled ->
+                    appPreferences.edit().putBoolean("simplified_preview", enabled).apply()
+                },
+            )
+        }
         if (bleManager.hasRequiredPermissions()) {
             bleManager.start()
         } else {

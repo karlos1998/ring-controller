@@ -82,6 +82,12 @@
     <string name="controller_status_disconnected">Controller unavailable; controls remain in local preview</string>
     <string name="connect_retry">RETRY</string>
     <string name="local_demo">DEMO</string>
+    <string name="preview_settings">Live preview</string>
+    <string name="local_setting">THIS PHONE</string>
+    <string name="simplified_preview">Simplified halo preview</string>
+    <string name="simplified_preview_subtitle">Show four large halos instead of the car</string>
+    <string name="simplified_preview_toggle_description">Use simplified live halo preview</string>
+    <string name="simplified_preview_description">Simplified live preview with four interactive halo rings</string>
     <string name="input_rules">Inputs &amp; automation</string>
     <string name="runs_on_controller">RUNS WITHOUT PHONE</string>
     <string name="cabin_button">Cabin button</string>

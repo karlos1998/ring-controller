@@ -49,4 +49,24 @@ class DashboardUiTest {
         composeRule.onNodeWithText(context.getString(R.string.cabin_button)).assertExists()
         composeRule.onNodeWithText(context.getString(R.string.vehicle_light_signal)).assertExists()
     }
+
+    @Test
+    fun switchesToInteractiveSimplifiedPreviewFromConfiguration() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        composeRule.setContent { RingControllerApp() }
+
+        composeRule.onNodeWithContentDescription(context.getString(R.string.nav_config_description)).performClick()
+        composeRule.onNodeWithContentDescription(
+            context.getString(R.string.simplified_preview_toggle_description),
+        ).performScrollTo().performClick()
+        composeRule.onNodeWithContentDescription(context.getString(R.string.nav_drive_description)).performClick()
+
+        composeRule.onNodeWithContentDescription(
+            context.getString(R.string.simplified_preview_description),
+        ).assertExists()
+        composeRule.onNodeWithContentDescription(context.getString(R.string.ring_description, 3)).performClick()
+        composeRule.onNodeWithContentDescription(
+            context.getString(R.string.ring_description, 3),
+        ).assertIsSelected()
+    }
 }

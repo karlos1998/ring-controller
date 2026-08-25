@@ -4,6 +4,7 @@ All notable changes will be documented here.
 
 ## Unreleased
 
+- Persistent car/simplified live-preview selection with four large interactive halo controls on both Drive and Scenes screens.
 - Initial monorepo structure.
 - ESP32 four-ring pin map, favorite-color button cycle, long-press off action, and vehicle override firmware.
 - Interactive Android dashboard with a four-halo front view, global/per-ring color controls, favorites, brightness, and animated show-mode previews.

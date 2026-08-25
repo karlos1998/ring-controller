@@ -47,6 +47,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -131,7 +132,11 @@ private val defaultFavoriteColors = listOf(
 )
 
 @Composable
-internal fun RingControllerApp(bleManager: RingBleManager? = null) {
+internal fun RingControllerApp(
+    bleManager: RingBleManager? = null,
+    initialSimplifiedPreview: Boolean = false,
+    onSimplifiedPreviewChanged: (Boolean) -> Unit = {},
+) {
     val connectionState = bleManager?.connectionState ?: BleConnectionState.LocalDemo
     val controllerSnapshot = bleManager?.snapshot
     var currentTab by remember { mutableStateOf(DashboardTab.Drive) }
@@ -142,6 +147,7 @@ internal fun RingControllerApp(bleManager: RingBleManager? = null) {
     var activeScene by remember { mutableStateOf<ScenePreset?>(null) }
     var vehicleAutomationEnabled by remember { mutableStateOf(true) }
     var favoriteColors by remember { mutableStateOf(defaultFavoriteColors) }
+    var simplifiedPreview by rememberSaveable { mutableStateOf(initialSimplifiedPreview) }
 
     LaunchedEffect(controllerSnapshot) {
         val controller = controllerSnapshot ?: return@LaunchedEffect
@@ -200,6 +206,7 @@ internal fun RingControllerApp(bleManager: RingBleManager? = null) {
                     brightness = brightness,
                     activeScene = activeScene,
                     connectionState = connectionState,
+                    simplifiedPreview = simplifiedPreview,
                     onRingSelected = { selectedRing = it },
                     onPowerClick = {
                         ringsEnabled = !ringsEnabled
@@ -233,6 +240,7 @@ internal fun RingControllerApp(bleManager: RingBleManager? = null) {
                     selectedRing = selectedRing,
                     activeScene = activeScene,
                     connectionState = connectionState,
+                    simplifiedPreview = simplifiedPreview,
                     onRingSelected = { selectedRing = it },
                     onSceneSelected = { scene ->
                         activeScene = scene
@@ -251,6 +259,11 @@ internal fun RingControllerApp(bleManager: RingBleManager? = null) {
                     deviceName = bleManager?.deviceName ?: BleProtocol.DEVICE_NAME,
                     firmwareVersion = controllerSnapshot?.firmwareVersion,
                     onReconnect = { bleManager?.start() },
+                    simplifiedPreview = simplifiedPreview,
+                    onSimplifiedPreviewChanged = { enabled ->
+                        simplifiedPreview = enabled
+                        onSimplifiedPreviewChanged(enabled)
+                    },
                     vehicleAutomationEnabled = vehicleAutomationEnabled,
                     onVehicleAutomationChanged = {
                         vehicleAutomationEnabled = it
@@ -297,6 +310,7 @@ private fun DriveScreen(
     brightness: Float,
     activeScene: ScenePreset?,
     connectionState: BleConnectionState,
+    simplifiedPreview: Boolean,
     onRingSelected: (Int) -> Unit,
     onPowerClick: () -> Unit,
     onTargetSelected: (Int?) -> Unit,
@@ -314,6 +328,7 @@ private fun DriveScreen(
                 colors = ringColors,
                 selectedRing = selectedRing,
                 activeScene = activeScene,
+                simplifiedPreview = simplifiedPreview,
                 onRingSelected = onRingSelected,
                 onPowerClick = onPowerClick,
             )
@@ -340,6 +355,7 @@ private fun ScenesScreen(
     selectedRing: Int?,
     activeScene: ScenePreset?,
     connectionState: BleConnectionState,
+    simplifiedPreview: Boolean,
     onRingSelected: (Int) -> Unit,
     onSceneSelected: (ScenePreset) -> Unit,
     onStopScene: () -> Unit,
@@ -352,6 +368,7 @@ private fun ScenesScreen(
                 colors = ringColors,
                 selectedRing = selectedRing,
                 activeScene = activeScene,
+                simplifiedPreview = simplifiedPreview,
                 onRingSelected = onRingSelected,
             )
         }
@@ -393,6 +410,8 @@ private fun ConfigScreen(
     deviceName: String,
     firmwareVersion: String?,
     onReconnect: () -> Unit,
+    simplifiedPreview: Boolean,
+    onSimplifiedPreviewChanged: (Boolean) -> Unit,
     vehicleAutomationEnabled: Boolean,
     onVehicleAutomationChanged: (Boolean) -> Unit,
 ) {
@@ -404,6 +423,18 @@ private fun ConfigScreen(
                 deviceName = deviceName,
                 firmwareVersion = firmwareVersion,
                 onReconnect = onReconnect,
+            )
+        }
+        item {
+            SectionHeader(
+                title = stringResource(R.string.preview_settings),
+                trailing = stringResource(R.string.local_setting),
+            )
+        }
+        item {
+            PreviewModeCard(
+                simplified = simplifiedPreview,
+                onSimplifiedChanged = onSimplifiedPreviewChanged,
             )
         }
         item {
@@ -496,6 +527,7 @@ private fun HaloDashboard(
     colors: List<Color>,
     selectedRing: Int?,
     activeScene: ScenePreset?,
+    simplifiedPreview: Boolean,
     onRingSelected: (Int) -> Unit,
     onPowerClick: () -> Unit,
 ) {
@@ -556,12 +588,11 @@ private fun HaloDashboard(
                     )
                     .padding(horizontal = 8.dp, vertical = 10.dp),
             ) {
-                ChallengerFrontPreview(
-                    enabled = enabled,
-                    colors = colors,
-                    selectedRing = selectedRing,
-                    onRingSelected = onRingSelected,
-                )
+                if (simplifiedPreview) {
+                    SimplifiedHaloPreview(enabled, colors, selectedRing, onRingSelected)
+                } else {
+                    ChallengerFrontPreview(enabled, colors, selectedRing, onRingSelected)
+                }
             }
         }
     }
@@ -573,6 +604,7 @@ private fun CompactCarPreview(
     colors: List<Color>,
     selectedRing: Int?,
     activeScene: ScenePreset?,
+    simplifiedPreview: Boolean,
     onRingSelected: (Int) -> Unit,
 ) {
     Column(
@@ -582,7 +614,11 @@ private fun CompactCarPreview(
             .border(1.dp, AppLine, RoundedCornerShape(16.dp))
             .padding(10.dp),
     ) {
-        ChallengerFrontPreview(enabled, colors, selectedRing, onRingSelected)
+        if (simplifiedPreview) {
+            SimplifiedHaloPreview(enabled, colors, selectedRing, onRingSelected)
+        } else {
+            ChallengerFrontPreview(enabled, colors, selectedRing, onRingSelected)
+        }
         Text(
             text = activeScene?.let { stringResource(R.string.scene_running, stringResource(it.titleRes)) }
                 ?: stringResource(R.string.no_scene_running),
@@ -592,6 +628,112 @@ private fun CompactCarPreview(
             fontWeight = FontWeight.Bold,
             letterSpacing = 0.6.sp,
         )
+    }
+}
+
+@Composable
+private fun SimplifiedHaloPreview(
+    enabled: Boolean,
+    colors: List<Color>,
+    selectedRing: Int?,
+    onRingSelected: (Int) -> Unit,
+) {
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(822f / 390f),
+    ) {
+        val previewDescription = stringResource(R.string.simplified_preview_description)
+        val centers = listOf(0.145f, 0.355f, 0.645f, 0.855f)
+
+        Canvas(
+            Modifier
+                .matchParentSize()
+                .semantics { contentDescription = previewDescription },
+        ) {
+            drawRoundRect(
+                brush = Brush.verticalGradient(listOf(Color(0xFF1D2229), Color(0xFF090B0F))),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(18.dp.toPx()),
+            )
+            drawLine(
+                color = Color(0xFF343A43),
+                start = Offset(size.width * 0.46f, size.height * 0.50f),
+                end = Offset(size.width * 0.54f, size.height * 0.50f),
+                strokeWidth = 2.dp.toPx(),
+                cap = StrokeCap.Round,
+            )
+            centers.forEachIndexed { index, centerX ->
+                val color = if (enabled) colors[index] else Color(0xFF353A42)
+                val emphasized = selectedRing == null || selectedRing == index
+                val center = Offset(size.width * centerX, size.height * 0.48f)
+                val radius = size.minDimension * 0.20f
+                val glowAlpha = when {
+                    !enabled -> 0.08f
+                    emphasized -> 0.62f
+                    else -> 0.26f
+                }
+
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            color.copy(alpha = glowAlpha * 0.35f),
+                            color.copy(alpha = glowAlpha * 0.18f),
+                            Color.Transparent,
+                        ),
+                        center = center,
+                        radius = radius * 1.65f,
+                    ),
+                    center = center,
+                    radius = radius * 1.65f,
+                )
+                drawCircle(
+                    color = color.copy(alpha = if (enabled) 0.22f else 0.08f),
+                    center = center,
+                    radius = radius * 1.05f,
+                )
+                drawCircle(
+                    color = color,
+                    center = center,
+                    radius = radius,
+                    style = Stroke(width = radius * 0.26f),
+                )
+                drawCircle(
+                    color = Color(0xFF050609),
+                    center = center,
+                    radius = radius * 0.70f,
+                )
+                drawCircle(
+                    color = Color.White.copy(alpha = if (enabled) 0.48f else 0.10f),
+                    center = center,
+                    radius = radius * 0.88f,
+                    style = Stroke(width = 1.dp.toPx()),
+                )
+                if (selectedRing == index) {
+                    drawCircle(
+                        color = AppOrange,
+                        center = center,
+                        radius = radius * 1.20f,
+                        style = Stroke(width = 2.dp.toPx()),
+                    )
+                }
+            }
+        }
+
+        val targetSize = maxHeight * 0.68f
+        val centerY = maxHeight * 0.48f
+        centers.forEachIndexed { index, centerX ->
+            RingHitTarget(
+                index = index,
+                selected = selectedRing == index,
+                onSelected = onRingSelected,
+                modifier = Modifier
+                    .offset(
+                        x = maxWidth * centerX - targetSize / 2,
+                        y = centerY - targetSize / 2,
+                    )
+                    .size(targetSize),
+            )
+        }
     }
 }
 
@@ -1082,6 +1224,68 @@ private fun VehicleAutomationCard(
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.Black,
                 checkedTrackColor = AppOrange,
+                uncheckedThumbColor = AppMuted,
+                uncheckedTrackColor = Color(0xFF30343B),
+            ),
+        )
+    }
+}
+
+@Composable
+private fun PreviewModeCard(
+    simplified: Boolean,
+    onSimplifiedChanged: (Boolean) -> Unit,
+) {
+    val toggleDescription = stringResource(R.string.simplified_preview_toggle_description)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(AppSurface, RoundedCornerShape(14.dp))
+            .border(1.dp, AppLine, RoundedCornerShape(14.dp))
+            .clickable { onSimplifiedChanged(!simplified) }
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            modifier = Modifier.width(58.dp),
+            horizontalArrangement = Arrangement.spacedBy(3.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            repeat(2) {
+                Canvas(Modifier.size(11.dp)) {
+                    drawCircle(
+                        color = if (simplified) AppCyan else AppMuted,
+                        radius = size.minDimension * 0.38f,
+                        style = Stroke(width = 1.8.dp.toPx()),
+                    )
+                }
+            }
+            Spacer(Modifier.width(4.dp))
+            repeat(2) {
+                Canvas(Modifier.size(11.dp)) {
+                    drawCircle(
+                        color = if (simplified) AppCyan else AppMuted,
+                        radius = size.minDimension * 0.38f,
+                        style = Stroke(width = 1.8.dp.toPx()),
+                    )
+                }
+            }
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(stringResource(R.string.simplified_preview), fontWeight = FontWeight.Bold)
+            Text(
+                stringResource(R.string.simplified_preview_subtitle),
+                color = AppMuted,
+                fontSize = 11.sp,
+            )
+        }
+        Switch(
+            checked = simplified,
+            onCheckedChange = onSimplifiedChanged,
+            modifier = Modifier.semantics { contentDescription = toggleDescription },
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.Black,
+                checkedTrackColor = AppCyan,
                 uncheckedThumbColor = AppMuted,
                 uncheckedTrackColor = Color(0xFF30343B),
             ),

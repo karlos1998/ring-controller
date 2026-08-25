@@ -210,7 +210,7 @@ pio device monitor -d firmware --port /dev/cu.usbserial-10
 
 ### Android
 
-The Android app uses Kotlin, Jetpack Compose, minimum Android 8.0 (API 26), and application ID `it.letscode.ringcontroller`. Its Drive, Scenes, and Config tabs are available in English and Polish, selected automatically from the Android system language. It scans for `D4WID-Ring`, displays connection state continuously, and synchronizes power, brightness, four colors, scenes, favorites, and vehicle-input state with the ESP32.
+The Android app uses Kotlin, Jetpack Compose, minimum Android 8.0 (API 26), and application ID `it.letscode.ringcontroller`. Its Drive, Scenes, and Config tabs are available in English and Polish, selected automatically from the Android system language. It scans for `D4WID-Ring`, displays connection state continuously, and synchronizes power, brightness, four colors, scenes, favorites, and vehicle-input state with the ESP32. A phone-local Config setting switches the live visualization between the Challenger front view and a simplified four-large-ring view; the selection persists across app restarts.
 
 ```bash
 cd mobile
