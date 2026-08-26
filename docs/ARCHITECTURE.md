@@ -30,7 +30,9 @@ safety/off > active vehicle-signal override > physical-button state > app-select
 
 The exact priority policy will become configurable only where doing so remains deterministic and safe.
 
-Default physical-button behavior is short press to turn on or advance to the next favorite and an 850 ms hold to turn user lighting off. The favorite cycle and button actions are stored and executed on the ESP32. The cabin RGB indicator mirrors the shared solid color; when ring outputs differ, it follows Ring 1.
+Default physical-button behavior is an 850 ms hold to turn user lighting off and a short press to restore a uniform saved solid color or advance through the favorites. If a built-in/custom scene is active or saved solid colors differ, the short press first stops the effect and forces fallback ice white on all four rings; the next press continues after white in the favorite cycle. The favorite cycle and button actions are stored and executed on the ESP32.
+
+The cabin RGB indicator mirrors both hue and global brightness only for a uniform solid state. A scene or mixed solid colors instead produce a repeating full-brightness amber double flash followed by a long pause. Off state suppresses the indicator, while the higher-priority vehicle override shows its actual forced-white output. This policy intentionally exposes an outside-lighting state that should be normalized with the physical button before driving.
 
 ## Android layers
 

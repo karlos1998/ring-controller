@@ -5,9 +5,10 @@ PlatformIO/Arduino firmware for the classic ESP32-WROOM-32 30-pin DevKit.
 ## Current behavior
 
 - Configures all 15 planned PWM outputs at 1 kHz, 8-bit resolution.
-- Displays the saved favorite color across all four rings.
-- Mirrors the shared color on the reserved cabin RGB indicator pins.
-- A short button press turns the rings on when they are off, or advances to the next saved favorite while they are on.
+- Displays the saved solid colors across four independently controlled rings.
+- Mirrors a uniform solid color and its global brightness on the reserved cabin RGB indicator pins.
+- Replaces the cabin preview with a repeating full-brightness amber double flash whenever solid ring colors differ or a built-in/custom scene is active.
+- A short button press stops any scene or mixed-color state and forces fallback ice white across all four rings; subsequent presses advance through the durable favorites. When a uniform solid color was merely off, the first press restores it.
 - Holding the button for 850 ms turns the user lighting off.
 - Forces all rings to bright white while the debounced, active-low vehicle signal on GPIO35 is active.
 - Stores the user enabled state, favorite index, and initial vehicle-automation settings in ESP32 Preferences/NVS.
@@ -16,7 +17,7 @@ PlatformIO/Arduino firmware for the classic ESP32-WROOM-32 30-pin DevKit.
 - Runs all 20 signal, everyday, and show scenes locally at roughly 66 render updates per second, so a connected phone is not required for effects. Scene 19 crossfades through the durable favorite-color collection.
 - Stores eight custom-scene slots in NVS. Each slot supports 2–12 four-ring moments with independent `150..5000` ms timing and either smooth interpolation or a held jump; committed scenes keep running without the phone.
 
-The initial built-in favorites are Ice, Amber, Red, Violet, Cyan, and Green. Android can replace the durable 1–12 color list through BLE; the physical button then uses the updated cycle without a phone.
+The initial built-in favorites are Ice, Amber, Red, Violet, Cyan, and Green. Android can replace the durable 1–12 color list through BLE; the physical button then uses the updated cycle without a phone. After the warning-reset ice white, the next press selects the favorite following an exact matching white, or the first favorite if that white is no longer saved.
 
 ## Build and upload
 

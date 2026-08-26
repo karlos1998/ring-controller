@@ -149,8 +149,9 @@ ESP32 3V3 ── 10 kΩ ── GPIO34
 
 The current default behavior is:
 
-- Short press while off: turn on using the current favorite color.
-- Short press while on: advance to the next favorite.
+- Short press while off with a saved uniform solid color: turn that color back on.
+- Short press while a scene is active or the four saved solid colors differ: stop the scene and force all four rings to the fallback ice-white color.
+- Short press while a uniform solid color is on: advance to the next durable favorite. After the fallback white, the cycle continues with the favorite following white, or with the first favorite when white is not in the list.
 - Hold for 850 ms: turn the user lighting off.
 
 These rules run on the ESP32 without a phone. The Android app will make the favorite list and button actions configurable after BLE synchronization is implemented.
@@ -162,7 +163,11 @@ GPIO21, GPIO22, and GPIO23 are reserved for the cabin indicator. Do not connect 
 - A bare low-current RGB LED requires one current-limiting resistor per color.
 - A 12 V RGB indicator requires a suitable driver; it must not be powered from an ESP32 GPIO.
 - An addressable LED can reduce the indicator to one GPIO, but that is not the current pin plan.
-- One RGB indicator cannot represent four different ring colors simultaneously. It mirrors the shared solid color and follows Ring 1 during independent colors or effects.
+- With a uniform solid color, the indicator mirrors that color and the global ring brightness.
+- If the four solid colors differ or any built-in/custom scene is active, the indicator emits two strong full-brightness amber flashes followed by a long pause. This warning repeats until a uniform solid color is restored or the rings are turned off.
+- A short cabin-button press clears that warning state by stopping the effect and forcing all four rings to fallback ice white; later presses continue through the saved favorites.
+- While the vehicle-signal override is active, the indicator follows the actual forced-white output. When user lighting is off, the indicator is off.
+- One RGB indicator still cannot identify four different ring colors individually; the amber warning deliberately reports that the outside lighting is not uniform.
 
 ## Power and automotive safety
 

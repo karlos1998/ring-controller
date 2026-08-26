@@ -17,7 +17,7 @@ namespace {
 using ringcontroller::pins::RgbPins;
 
 constexpr char kDeviceName[] = "D4WID-Ring";
-constexpr char kFirmwareVersion[] = "0.4.0";
+constexpr char kFirmwareVersion[] = "0.4.1";
 constexpr char kProtocolVersion[] = "1.1";
 constexpr char kServiceUuid[] = "7d2f0001-9c5a-4f28-b4d7-4b3a6d9a0001";
 constexpr char kCommandUuid[] = "7d2f0002-9c5a-4f28-b4d7-4b3a6d9a0001";
@@ -33,6 +33,9 @@ constexpr uint32_t kButtonDebounceMs = 40;
 constexpr uint32_t kButtonLongPressMs = 850;
 constexpr uint32_t kVehicleSignalDebounceMs = 250;
 constexpr uint32_t kRenderIntervalMs = 15;
+constexpr uint32_t kCabinWarningCycleMs = 1700;
+constexpr uint32_t kCabinWarningFlashMs = 140;
+constexpr uint32_t kCabinWarningSecondFlashAtMs = 280;
 constexpr size_t kMaximumFavorites = 12;
 constexpr size_t kMaximumCustomScenes = 8;
 constexpr size_t kMaximumCustomMoments = 12;
@@ -96,6 +99,9 @@ constexpr std::array<RgbColor, 6> kDefaultFavoriteColors{{
     {0, 229, 229},
     {67, 224, 123},
 }};
+constexpr RgbColor kButtonFallbackWhite{242, 246, 255};
+constexpr RgbColor kCabinWarningAmber{255, 106, 0};
+constexpr RgbColor kOff{0, 0, 0};
 
 class DebouncedInput {
 public:
@@ -182,6 +188,28 @@ RgbColor scaleColor(const RgbColor color, const uint8_t brightness) {
     };
 }
 
+bool colorsEqual(const RgbColor left, const RgbColor right) {
+    return left.red == right.red && left.green == right.green && left.blue == right.blue;
+}
+
+bool allColorsEqual(const std::array<RgbColor, 4> &colors) {
+    for (size_t index = 1; index < colors.size(); ++index) {
+        if (!colorsEqual(colors[0], colors[index])) return false;
+    }
+    return true;
+}
+
+constexpr bool cabinWarningPulseOn(const uint32_t nowMs) {
+    return nowMs % kCabinWarningCycleMs < kCabinWarningFlashMs ||
+        (nowMs % kCabinWarningCycleMs >= kCabinWarningSecondFlashAtMs &&
+         nowMs % kCabinWarningCycleMs < kCabinWarningSecondFlashAtMs + kCabinWarningFlashMs);
+}
+
+static_assert(cabinWarningPulseOn(0), "Cabin warning starts with a flash");
+static_assert(!cabinWarningPulseOn(150), "Cabin warning separates the flashes");
+static_assert(cabinWarningPulseOn(300), "Cabin warning contains a second flash");
+static_assert(!cabinWarningPulseOn(500), "Cabin warning pauses after the double flash");
+
 void attachPwmOutputs() {
     for (size_t index = 0; index < ringcontroller::pins::kPwmOutputs.size(); ++index) {
         const uint8_t pin = ringcontroller::pins::kPwmOutputs[index];
@@ -216,11 +244,19 @@ void applyColor(const RgbPins &pins, const RgbColor color) {
     writePwm(pins.blue, color.blue);
 }
 
-void applyRenderedColors(const std::array<RgbColor, 4> &colors) {
+void applyRenderedColors(
+    const std::array<RgbColor, 4> &colors,
+    const uint32_t nowMs,
+    const bool effectActive
+) {
     for (size_t index = 0; index < colors.size(); ++index) {
         applyColor(ringcontroller::pins::kRings[index], scaleColor(colors[index], globalBrightness));
     }
-    applyColor(ringcontroller::pins::kCabinIndicator, scaleColor(colors[0], globalBrightness));
+    const bool warning = effectActive || !allColorsEqual(colors);
+    const RgbColor indicator = warning
+        ? (cabinWarningPulseOn(nowMs) ? kCabinWarningAmber : kOff)
+        : scaleColor(colors[0], globalBrightness);
+    applyColor(ringcontroller::pins::kCabinIndicator, indicator);
 }
 
 void applyAllRings(const RgbColor color) {
@@ -461,11 +497,11 @@ void renderOutputs(const uint32_t nowMs) {
     } else if (!userEnabled) {
         applyAllRings({0, 0, 0});
     } else if (activeCustomScene != kNoCustomScene) {
-        applyRenderedColors(customSceneColors(nowMs));
+        applyRenderedColors(customSceneColors(nowMs), nowMs, true);
     } else if (activeScene != kNoScene) {
-        applyRenderedColors(sceneColors(nowMs));
+        applyRenderedColors(sceneColors(nowMs), nowMs, true);
     } else {
-        applyRenderedColors(ringColors);
+        applyRenderedColors(ringColors, nowMs, false);
     }
 }
 
@@ -594,6 +630,24 @@ void applyFavoriteToRings(const uint8_t index) {
     favoriteColorIndex = index % favoriteCount;
     ringColors.fill(favoriteColors[favoriteColorIndex]);
     selectScene(kNoScene);
+}
+
+int favoriteIndexForColor(const RgbColor color) {
+    for (uint8_t index = 0; index < favoriteCount; ++index) {
+        if (colorsEqual(favoriteColors[index], color)) return index;
+    }
+    return -1;
+}
+
+void applyButtonFallbackWhite() {
+    ringColors.fill(kButtonFallbackWhite);
+    selectScene(kNoScene);
+    userEnabled = true;
+
+    const int matchingFavorite = favoriteIndexForColor(kButtonFallbackWhite);
+    favoriteColorIndex = matchingFavorite >= 0
+        ? static_cast<uint8_t>(matchingFavorite)
+        : static_cast<uint8_t>(favoriteCount - 1);
 }
 
 void setFavoritesFromCommand(const String &payload) {
@@ -837,10 +891,19 @@ void loadConfiguration() {
 }
 
 void handleShortButtonPress() {
-    if (!userEnabled) {
+    const bool effectActive = activeScene != kNoScene || activeCustomScene != kNoCustomScene;
+    const bool mixedColors = !allColorsEqual(ringColors);
+
+    if (effectActive || mixedColors) {
+        applyButtonFallbackWhite();
+    } else if (!userEnabled) {
         userEnabled = true;
     } else if (favoriteCount > 0) {
-        applyFavoriteToRings((favoriteColorIndex + 1) % favoriteCount);
+        const int currentFavorite = favoriteIndexForColor(ringColors[0]);
+        const uint8_t cycleFrom = currentFavorite >= 0
+            ? static_cast<uint8_t>(currentFavorite)
+            : favoriteColorIndex;
+        applyFavoriteToRings((cycleFrom + 1) % favoriteCount);
     }
     persistLightState();
     persistFavorites();

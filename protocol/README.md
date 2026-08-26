@@ -120,7 +120,8 @@ The ESP32 stores power, brightness, four solid colors, active built-in/custom sc
 
 ## Default physical-button behavior
 
-- Short press while off: turn on with the current saved color.
-- Short press while on: advance to the next durable favorite.
+- Short press while off with a uniform saved solid color: restore that color.
+- Short press while a built-in/custom scene is active or solid ring colors differ: stop the effect and force fallback ice white on all four rings.
+- Short press while a uniform solid color is on: advance to the next durable favorite. After the fallback white, advance to the matching next favorite or the first favorite when white is absent.
 - Long press (850 ms): turn user lighting off.
-- The cabin indicator mirrors Ring 1 when outputs differ or an effect is active.
+- The cabin indicator mirrors color and global brightness for a uniform solid state. Mixed colors or an active scene produce a repeating full-brightness amber double flash and long pause; user-off suppresses it and the vehicle override shows forced white.

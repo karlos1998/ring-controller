@@ -198,11 +198,11 @@
     <string name="cabin_button">Przycisk w kabinie</string>
     <string name="cabin_button_subtitle">Sterowanie fizyczne i kontrolka RGB</string>
     <string name="action_tap">KLIK</string>
-    <string name="action_tap_result">Włącz / następny ulubiony</string>
+    <string name="action_tap_result">Włącz / wymuś biel / następny ulubiony</string>
     <string name="action_hold">PRZYTRZ.</string>
     <string name="action_hold_result">Wyłącz wszystkie ringi</string>
     <string name="action_rgb_led">DIODA RGB</string>
-    <string name="action_rgb_led_result">Kolor Ring 1 / wspólny kolor</string>
+    <string name="action_rgb_led_result">Wspólny kolor i jasność / pomarańczowy alarm</string>
     <string name="vehicle_light_signal">Sygnał świateł auta</string>
     <string name="vehicle_light_signal_result">Aktywne +12 V: jasna biel</string>
 </resources>

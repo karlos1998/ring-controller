@@ -198,11 +198,11 @@
     <string name="cabin_button">Cabin button</string>
     <string name="cabin_button_subtitle">Physical control and RGB status light</string>
     <string name="action_tap">TAP</string>
-    <string name="action_tap_result">Turn on / next favorite</string>
+    <string name="action_tap_result">Turn on / force white / next favorite</string>
     <string name="action_hold">HOLD</string>
     <string name="action_hold_result">Turn all rings off</string>
     <string name="action_rgb_led">RGB LED</string>
-    <string name="action_rgb_led_result">Mirror Ring 1 / shared color</string>
+    <string name="action_rgb_led_result">Shared color + brightness / amber warning</string>
     <string name="vehicle_light_signal">Vehicle light signal</string>
     <string name="vehicle_light_signal_result">When +12 V is active: bright white</string>
 </resources>
