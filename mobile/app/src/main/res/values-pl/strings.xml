@@ -205,4 +205,11 @@
     <string name="action_rgb_led_result">Wspólny kolor i jasność / pomarańczowy alarm</string>
     <string name="vehicle_light_signal">Sygnał świateł auta</string>
     <string name="vehicle_light_signal_result">Aktywne +12 V: jasna biel</string>
+    <string name="daylight_signal_title">Zapalenie świateł dziennych</string>
+    <string name="daylight_signal_subtitle">Sygnał +12 V przez PC817 · GPIO36 / VP</string>
+    <string name="daylight_brightness_label">Jasność po aktywacji</string>
+    <string name="daylight_signal_active">SYGNAŁ AKTYWNY</string>
+    <string name="daylight_signal_inactive">SYGNAŁ NIEAKTYWNY</string>
+    <string name="daylight_brightness_slider_description">Jasność po zapaleniu świateł dziennych</string>
+    <string name="daylight_event_hint">Ustawiana raz po włączeniu sygnału. Późniejsze zmiany jasności pozostają do kolejnego wyłączenia i włączenia sygnału.</string>
 </resources>

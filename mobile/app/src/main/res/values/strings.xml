@@ -205,4 +205,11 @@
     <string name="action_rgb_led_result">Shared color + brightness / amber warning</string>
     <string name="vehicle_light_signal">Vehicle light signal</string>
     <string name="vehicle_light_signal_result">When +12 V is active: bright white</string>
+    <string name="daylight_signal_title">Daytime lights switched on</string>
+    <string name="daylight_signal_subtitle">+12 V signal through PC817 · GPIO36 / VP</string>
+    <string name="daylight_brightness_label">Brightness on activation</string>
+    <string name="daylight_signal_active">SIGNAL ACTIVE</string>
+    <string name="daylight_signal_inactive">SIGNAL INACTIVE</string>
+    <string name="daylight_brightness_slider_description">Daytime-light activation brightness</string>
+    <string name="daylight_event_hint">Applied once when the signal switches on. Later brightness changes remain until the signal is switched off and on again.</string>
 </resources>

@@ -11,9 +11,10 @@ PlatformIO/Arduino firmware for the classic ESP32-WROOM-32 30-pin DevKit.
 - A short button press stops any scene or mixed-color state and forces fallback ice white across all four rings; subsequent presses advance through the durable favorites. When a uniform solid color was merely off, the first press restores it.
 - Holding the button for 850 ms turns the user lighting off.
 - Forces all rings to bright white while the debounced, active-low vehicle signal on GPIO35 is active.
-- Stores the user enabled state, favorite index, and initial vehicle-automation settings in ESP32 Preferences/NVS.
-- Advertises a protocol-1.1 BLE GATT service as `D4WID-Ring` and accepts power, per-ring color, brightness, built-in/custom scene, favorite, and vehicle-automation commands.
-- Notifies Android of the authoritative power state, four colors, brightness, active scene, vehicle input/override state, favorites, and firmware version after commands or physical input changes.
+- On each debounced inactive-to-active transition of the daytime-light signal on GPIO36 / `VP`, applies the configured global brightness once. The action defaults to 50%, can be disabled, does not turn the rings on, and does not prevent later brightness or scene changes. Cycling the signal off and on applies it again.
+- Stores the user enabled state, favorite index, and both vehicle-automation settings in ESP32 Preferences/NVS.
+- Advertises a protocol-1.2 BLE GATT service as `D4WID-Ring` and accepts power, per-ring color, brightness, built-in/custom scene, favorite, and vehicle-automation commands.
+- Notifies Android of the authoritative power state, four colors, brightness, active scene, both vehicle inputs and their automation settings, favorites, and firmware version after commands or physical input changes.
 - Runs all 20 signal, everyday, and show scenes locally at roughly 66 render updates per second, so a connected phone is not required for effects. Scene 19 crossfades through the durable favorite-color collection.
 - Stores eight custom-scene slots in NVS. Each slot supports 2–12 four-ring moments with independent `150..5000` ms timing and either smooth interpolation or a held jump; committed scenes keep running without the phone.
 
@@ -35,6 +36,7 @@ If the upload is unstable, keep the upload speed at 115200 as configured in `pla
 - HW-153 `S` inputs are active-high. Change `kModuleInputActiveLow` only after measuring a board that behaves differently.
 - GPIO34 has an external 10 kΩ pull-up and a button to GND.
 - GPIO35 is pulled high by the 3.3 V output side of the PC817 module and goes low when the sensed 12 V signal is active.
+- GPIO36 / `VP` is pulled high by the 3.3 V output side of the second PC817 module and goes low when the daytime-light 12 V signal is active.
 - The cabin indicator must not be connected until its driver/current requirements are known.
 
 The canonical pin map is `include/PinMap.h` and must remain synchronized with `../hardware/PINOUT.md`.

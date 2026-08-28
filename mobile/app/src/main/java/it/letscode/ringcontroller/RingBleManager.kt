@@ -136,6 +136,9 @@ internal class RingBleManager(private val context: Context) {
     fun setVehicleAutomation(enabled: Boolean) =
         writeCommand(BleProtocol.vehicleAutomation(enabled), immediate = true)
 
+    fun setDaylightAutomation(enabled: Boolean, brightnessPercent: Int) =
+        writeCommand(BleProtocol.daylightAutomation(enabled, brightnessPercent), immediate = true)
+
     fun uploadCustomScene(scene: CustomScene, playAfterUpload: Boolean) =
         enqueueCommands(BleProtocol.customSceneUpload(scene, playAfterUpload))
 

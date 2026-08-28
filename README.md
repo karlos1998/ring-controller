@@ -1,8 +1,8 @@
 # D4WID Ring
 
-Android-controlled RGB halo-ring controller for a pre-facelift 2013 Dodge Challenger. The system replaces an unreliable aftermarket RGB controller with an ESP32-based controller, independently drives four 12 V common-anode RGB rings, mirrors the active color inside the cabin, and can apply a configurable action when a 12 V vehicle signal becomes active.
+Android-controlled RGB halo-ring controller for a pre-facelift 2013 Dodge Challenger. The system replaces an unreliable aftermarket RGB controller with an ESP32-based controller, independently drives four 12 V common-anode RGB rings, mirrors the active color inside the cabin, and reacts locally to two isolated 12 V vehicle signals.
 
-> **Project status:** buildable ESP32 firmware and Android dashboard with protocol-1.1 BLE control. The firmware provides independent ring colors, 20 built-in scenes, eight durable user-designed scene slots, editable favorite-color cycling, short/long physical-button handling, and an ignition/light-input override. Bench and in-vehicle hardware validation are still required.
+> **Project status:** buildable ESP32 firmware and Android dashboard with protocol-1.2 BLE control. The firmware provides independent ring colors, 20 built-in scenes, eight durable user-designed scene slots, editable favorite-color cycling, short/long physical-button handling, a forced-white vehicle-input override, and a configurable daytime-light brightness trigger. Bench and in-vehicle hardware validation are still required.
 
 ## Repository layout
 
@@ -41,11 +41,14 @@ flowchart LR
     ESP -- "PWM" --> B4
     ESP --> IND["Cabin RGB indicator"]
 
-    IGN["Ignition / vehicle-light +12 V signal"] --> FSIG["0.5–1 A signal fuse"]
-    FSIG --> OPTO["PC817 12 V optoisolator"]
-    OPTO -->|"active-low input"| ESP
+    LIGHTS["Normal-light +12 V signal"] --> FSIG1["0.5–1 A signal fuse"]
+    FSIG1 --> OPTO1["PC817 #1"]
+    OPTO1 -->|"GPIO35 active low"| ESP
+    DAY["Daytime-light +12 V signal"] --> FSIG2["0.5–1 A signal fuse"]
+    FSIG2 --> OPTO2["PC817 #2"]
+    OPTO2 -->|"GPIO36 / VP active low"| ESP
     BTN["Momentary button"] --> ESP
-    PHONE["Android phone"] <-->|"BLE protocol 1.1"| ESP
+    PHONE["Android phone"] <-->|"BLE protocol 1.2"| ESP
 ```
 
 ## Known hardware
@@ -53,7 +56,7 @@ flowchart LR
 - [ESP32-WROOM-32 30-pin DevKitC-style board with CH340 and USB-C](https://allegro.pl/oferta/esp32-30pin-wifi-bluetooth-usb-c-ch340-esp-wroom-32-devkitc-v1-16920206271).
 - Four [HW-153 V1.1 four-channel IRF540N low-side MOSFET boards](https://allegro.pl/oferta/258-modul-4x-mosfet-irf540-irf540n-arduino-stm32-11148276256). One board is assigned to each RGB ring; its fourth channel remains spare.
 - Four 12 V analog RGB rings with one common positive wire and separate R/G/B negative returns.
-- One [PC817/EL817 optoisolator module with a 12 V input](https://allegro.pl/produkt/modul-optoizolatora-1-kanalowego-pc817-12v-e5123d84-65a7-4efe-84a9-f1782654e68e?offerId=18445276315) and a 3.3 V-compatible transistor output.
+- Two [PC817/EL817 optoisolator modules with a 12 V input](https://allegro.pl/produkt/modul-optoizolatora-1-kanalowego-pc817-12v-e5123d84-65a7-4efe-84a9-f1782654e68e?offerId=18445276315) and a 3.3 V-compatible transistor output.
 - One momentary push button.
 - One cabin RGB indicator; its exact electrical type still needs to be confirmed before final wiring.
 - A protected 12 V → 5 V converter for the ESP32. [Pololu S18V20F5 item 2574](https://www.pololu.com/product/2574) is the correct 5 V member of the discussed family; item 2577 outputs 12 V and must not power the ESP32. The regulator still needs a fused, transient-controlled automotive input. Never connect the ESP32 directly to the battery.
@@ -62,7 +65,7 @@ The complete purchase and installation list, including fuses, wiring, protection
 
 ## ESP32 pin allocation
 
-The design uses 15 of the classic ESP32's 16 LEDC PWM channels. GPIO34 and GPIO35 are input-only pins and do not provide internal pull-up resistors.
+The design uses 15 of the classic ESP32's 16 LEDC PWM channels. GPIO34, GPIO35, and GPIO36 are input-only pins and do not provide internal pull-up resistors.
 
 | Function | Red | Green | Blue |
 |---|---:|---:|---:|
@@ -75,7 +78,8 @@ The design uses 15 of the classic ESP32's 16 LEDC PWM channels. GPIO34 and GPIO3
 | Input | GPIO | Electrical behavior |
 |---|---:|---|
 | Momentary button | GPIO34 (`D34`) | Active low; requires an external 10 kΩ pull-up to 3.3 V |
-| Ignition/light optoisolator | GPIO35 (`D35`) | Active low; use the module's 3.3 V output-side supply/pull-up |
+| Normal-light optoisolator | GPIO35 (`D35`) | Active low; continuously forces bright white when enabled |
+| Daytime-light optoisolator | GPIO36 (`VP`) | Active low; applies the configured brightness once on activation |
 
 Avoid GPIO0, GPIO2, GPIO5, GPIO12, and GPIO15 because they are boot-strapping pins. Keep GPIO1/TX0 and GPIO3/RX0 available for USB serial diagnostics.
 
@@ -117,23 +121,29 @@ Verify with a continuity meter, while fully unpowered, that the board's output `
 
 Repeat the same mapping for boards 2–4 using the GPIO table above.
 
-## 12 V signal input
+## 12 V signal inputs
 
-The optoisolator converts the selected vehicle signal into a safe ESP32 input:
+Each optoisolator converts one selected vehicle signal into a safe ESP32 input. Wire the isolated output sides separately:
 
 ```text
-Vehicle side                         ESP32 side
-------------                         ----------
-Ignition/light +12 V → INPUT+        VCC → ESP32 3V3
-Vehicle ground       → INPUT-        OUT → GPIO35
-                                      GND → ESP32 GND
+Vehicle side                           ESP32 side
+------------                           ----------
+Normal-light +12 V  → PC817 #1 INPUT+  VCC → ESP32 3V3
+Vehicle ground      → PC817 #1 INPUT-  OUT → GPIO35 / D35
+                                        GND → ESP32 GND
+
+Daytime-light +12 V → PC817 #2 INPUT+  VCC → ESP32 3V3
+Vehicle ground      → PC817 #2 INPUT-  OUT → GPIO36 / VP
+                                        GND → ESP32 GND
 ```
 
-Add a 0.5–1 A fuse close to the signal tap. Do not connect 12 V to `OUT`, `VCC`, or any ESP32 pin. When the 12 V signal is active, the module pulls GPIO35 low.
+Add a 0.5–1 A fuse close to each signal tap. Do not connect 12 V to `OUT`, `VCC`, or any ESP32 pin. When a 12 V signal is active, its module pulls the assigned GPIO low. Both output sides need a 3.3 V pull-up supplied either by the verified module or by an external 10 kΩ resistor; the ESP32 cannot enable an internal pull-up on these pins.
+
+GPIO35 is the higher-priority continuous forced-white input. GPIO36 / `VP` is an event input: each debounced off-to-on transition applies the configured global brightness once, with 50% as the default. It neither turns the rings on nor holds the value continuously. The user may change brightness or start a scene afterward; switching the 12 V daytime-light signal off and on applies the configured percentage again. If GPIO36 is already active when the ESP32 boots, the action runs once. Disabling this rule or changing its percentage is available in the Android Config tab and is stored on the ESP32.
 
 Do not add an extra wire that bridges the input and output grounds across the optoisolator. Note that a normal non-isolated automotive buck converter already ties ESP32 ground to vehicle ground, so the finished vehicle installation is not fully galvanically isolated. The optoisolator still performs essential voltage translation and limits fault propagation into the GPIO.
 
-The vehicle signal may be PWM-controlled or may contain bulb-diagnostic pulses. Firmware must debounce/filter it before changing the lights.
+Vehicle signals may be PWM-controlled or may contain bulb-diagnostic pulses. Firmware debounces both inputs for 250 ms before changing state; verify the actual vehicle waveforms before installation.
 
 ## Momentary button
 
@@ -197,7 +207,7 @@ flowchart TD
 5. Start with a conservative current limit, then verify red, green, blue, and white.
 6. Confirm all outputs are off during ESP32 reset and boot.
 7. Add the remaining rings one at a time.
-8. Test the PC817 input with a fused bench 12 V signal.
+8. Test both PC817 inputs independently with fused bench 12 V signals.
 9. Only after bench validation, install fused branches in the vehicle.
 
 See [hardware/BOM.md](hardware/BOM.md), [hardware/PINOUT.md](hardware/PINOUT.md), and [hardware/INSTALLATION_CHECKLIST.md](hardware/INSTALLATION_CHECKLIST.md) for condensed working references.
@@ -215,7 +225,7 @@ pio device monitor -d firmware --port /dev/cu.usbserial-10
 
 ### Android
 
-The Android app uses Kotlin, Jetpack Compose, minimum Android 8.0 (API 26), and application ID `it.letscode.ringcontroller`. Its Drive, Scenes, and Config tabs are available in English and Polish, selected automatically from the Android system language. It scans for `D4WID-Ring`, displays connection state continuously, and synchronizes power, brightness, four colors, 20 categorized built-in scenes, up to eight custom scenes, favorites, and vehicle-input state with the ESP32. The custom Scene Studio builds a loop from 2–12 reorderable moments; every moment defines four ring colors, `150..5000` ms timing, and a smooth or jump transition. Names and descriptions are stored in the app, while the executable timeline is uploaded transactionally and retained by ESP32 for phone-free playback. Color, favorites, and brightness share one staged full-screen editor with a live vehicle preview and a compact brightness slider directly above the Cancel/Save actions; Cancel leaves both the local state and controller untouched, while Save sends the result over BLE. A phone-local Config setting switches the live visualization between the Challenger front view and a simplified four-large-ring view; the selection persists across app restarts.
+The Android app uses Kotlin, Jetpack Compose, minimum Android 8.0 (API 26), and application ID `it.letscode.ringcontroller`. Its Drive, Scenes, and Config tabs are available in English and Polish, selected automatically from the Android system language. It scans for `D4WID-Ring`, displays connection state continuously, and synchronizes power, brightness, four colors, 20 categorized built-in scenes, up to eight custom scenes, favorites, and both vehicle-input states with the ESP32. Config exposes the GPIO35 forced-white enable switch and the GPIO36 daytime-light rule with its live signal status, enable switch, and 0–100% retrigger brightness. The custom Scene Studio builds a loop from 2–12 reorderable moments; every moment defines four ring colors, `150..5000` ms timing, and a smooth or jump transition. Names and descriptions are stored in the app, while the executable timeline is uploaded transactionally and retained by ESP32 for phone-free playback. Color, favorites, and brightness share one staged full-screen editor with a live vehicle preview and a compact brightness slider directly above the Cancel/Save actions; Cancel leaves both the local state and controller untouched, while Save sends the result over BLE. A phone-local Config setting switches the live visualization between the Challenger front view and a simplified four-large-ring view; the selection persists across app restarts.
 
 ```bash
 cd mobile

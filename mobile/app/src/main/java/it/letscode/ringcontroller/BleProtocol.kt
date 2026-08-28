@@ -15,6 +15,9 @@ internal data class ControllerSnapshot(
     val ringColors: List<Color>,
     val favorites: List<Color>,
     val customSceneSlot: Int?,
+    val daylightSignalActive: Boolean,
+    val daylightAutomationEnabled: Boolean,
+    val daylightBrightnessPercent: Int,
 )
 
 internal object BleProtocol {
@@ -46,6 +49,9 @@ internal object BleProtocol {
             ringColors = colors,
             favorites = favorites.take(12),
             customSceneSlot = parts.getOrNull(11)?.toIntOrNull()?.takeIf { it in 0 until MAX_CUSTOM_SCENES },
+            daylightSignalActive = parts.getOrNull(12) == "1",
+            daylightAutomationEnabled = parts.getOrNull(13) == "1",
+            daylightBrightnessPercent = parts.getOrNull(14)?.toIntOrNull()?.coerceIn(0, 100) ?: 50,
         )
     }
 
@@ -61,6 +67,9 @@ internal object BleProtocol {
         "FAVORITES|${colors.take(12).joinToString(",") { it.toHex().drop(1) }}"
 
     fun vehicleAutomation(enabled: Boolean): String = "VEHICLE|${if (enabled) 1 else 0}"
+
+    fun daylightAutomation(enabled: Boolean, brightnessPercent: Int): String =
+        "DAYLIGHT|${if (enabled) 1 else 0}|${brightnessPercent.coerceIn(0, 100)}"
 
     fun customSceneUpload(scene: CustomScene, playAfterUpload: Boolean): List<String> {
         val normalized = scene.normalized()

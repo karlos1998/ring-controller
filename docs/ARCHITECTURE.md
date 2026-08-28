@@ -10,7 +10,8 @@ flowchart LR
     FW --> PWM["15 PWM outputs"]
     PWM --> RINGS["4 RGB rings + cabin indicator"]
     BTN["Momentary button"] --> FW
-    OPT["12 V input via PC817"] --> FW
+    OPT1["Forced-white 12 V input via PC817"] --> FW
+    OPT2["Daytime-light 12 V input via PC817"] --> FW
     FW --> NVS["Non-volatile configuration"]
 ```
 
@@ -25,10 +26,12 @@ flowchart LR
 Priority order for output decisions:
 
 ```text
-safety/off > active vehicle-signal override > physical-button state > app-selected effect
+active GPIO35 forced-white override > user-off > physical-button state / app-selected effect
 ```
 
 The exact priority policy will become configurable only where doing so remains deterministic and safe.
+
+GPIO36 is deliberately not another continuous override. Its debounced inactive-to-active edge applies the configured global brightness (50% by default) once. The current color, power state, and scene are preserved; later user or scene brightness changes are accepted while the input stays active. A new off-to-on cycle retriggers the configured level. The enable flag and percentage live in ESP32 NVS, so this behavior does not require Android or BLE.
 
 Default physical-button behavior is an 850 ms hold to turn user lighting off and a short press to restore a uniform saved solid color or advance through the favorites. If a built-in/custom scene is active or saved solid colors differ, the short press first stops the effect and forces fallback ice white on all four rings; the next press continues after white in the favorite cycle. The favorite cycle and button actions are stored and executed on the ESP32.
 

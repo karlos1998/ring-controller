@@ -25,6 +25,9 @@ class BleProtocolTest {
         assertEquals(listOf("#FF0000", "#00FF00", "#0000FF", "#FFFFFF"), state.ringColors.map { it.toHex() })
         assertEquals(listOf("#F2F6FF", "#FF6A00"), state.favorites.map { it.toHex() })
         assertEquals(null, state.customSceneSlot)
+        assertFalse(state.daylightSignalActive)
+        assertFalse(state.daylightAutomationEnabled)
+        assertEquals(50, state.daylightBrightnessPercent)
     }
 
     @Test
@@ -69,5 +72,20 @@ class BleProtocolTest {
             BleProtocol.customSceneUpload(scene, playAfterUpload = true),
         )
         assertEquals("CUSTOM_DELETE|3", BleProtocol.customSceneDelete(3))
+    }
+
+    @Test
+    fun parsesAndEncodesDaylightAutomation() {
+        val state = BleProtocol.parseState(
+            "STATE|1.2|0.5.0|1|128|-1|0|0|1|FFFFFF,FFFFFF,FFFFFF,FFFFFF|FFFFFF|" +
+                "-1|1|1|50",
+        )
+
+        assertNotNull(state)
+        assertTrue(state!!.daylightSignalActive)
+        assertTrue(state.daylightAutomationEnabled)
+        assertEquals(50, state.daylightBrightnessPercent)
+        assertEquals("DAYLIGHT|1|50", BleProtocol.daylightAutomation(true, 50))
+        assertEquals("DAYLIGHT|0|100", BleProtocol.daylightAutomation(false, 140))
     }
 }

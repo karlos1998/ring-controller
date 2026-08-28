@@ -22,6 +22,7 @@ constexpr RgbPins kCabinIndicator{21, 22, 23};
 
 constexpr uint8_t kMomentaryButton = 34;
 constexpr uint8_t kVehicleSignal = 35;
+constexpr uint8_t kDaylightSignal = 36;
 
 constexpr std::array<uint8_t, 15> kPwmOutputs{{
     25, 26, 27,

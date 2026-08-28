@@ -89,6 +89,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlin.math.pow
+import kotlin.math.roundToInt
 
 private val AppBackground = Color(0xFF08090C)
 private val AppSurface = Color(0xFF12151A)
@@ -147,6 +148,9 @@ internal fun RingControllerApp(
     var activeCustomSceneSlot by remember { mutableStateOf<Int?>(null) }
     var customScenes by remember { mutableStateOf(initialCustomScenes) }
     var vehicleAutomationEnabled by remember { mutableStateOf(true) }
+    var daylightSignalActive by remember { mutableStateOf(false) }
+    var daylightAutomationEnabled by remember { mutableStateOf(true) }
+    var daylightBrightnessPercent by remember { mutableStateOf(50) }
     var favoriteColors by remember { mutableStateOf(defaultFavoriteColors) }
     var simplifiedPreview by rememberSaveable { mutableStateOf(initialSimplifiedPreview) }
     var colorEditorOpen by remember { mutableStateOf(false) }
@@ -168,6 +172,9 @@ internal fun RingControllerApp(
         ringColors = if (controller.vehicleOverrideActive) List(4) { Color.White }
         else controller.ringColors
         vehicleAutomationEnabled = controller.vehicleAutomationEnabled
+        daylightSignalActive = controller.daylightSignalActive
+        daylightAutomationEnabled = controller.daylightAutomationEnabled
+        daylightBrightnessPercent = controller.daylightBrightnessPercent
         if (controller.favorites.isNotEmpty()) favoriteColors = controller.favorites
     }
 
@@ -287,6 +294,20 @@ internal fun RingControllerApp(
                     onVehicleAutomationChanged = {
                         vehicleAutomationEnabled = it
                         bleManager?.setVehicleAutomation(it)
+                    },
+                    daylightSignalActive = daylightSignalActive,
+                    daylightAutomationEnabled = daylightAutomationEnabled,
+                    daylightBrightnessPercent = daylightBrightnessPercent,
+                    onDaylightAutomationChanged = { enabled ->
+                        daylightAutomationEnabled = enabled
+                        bleManager?.setDaylightAutomation(enabled, daylightBrightnessPercent)
+                    },
+                    onDaylightBrightnessChanged = { daylightBrightnessPercent = it },
+                    onDaylightBrightnessCommitted = {
+                        bleManager?.setDaylightAutomation(
+                            daylightAutomationEnabled,
+                            daylightBrightnessPercent,
+                        )
                     },
                 )
             }
@@ -545,6 +566,12 @@ private fun ConfigScreen(
     onSimplifiedPreviewChanged: (Boolean) -> Unit,
     vehicleAutomationEnabled: Boolean,
     onVehicleAutomationChanged: (Boolean) -> Unit,
+    daylightSignalActive: Boolean,
+    daylightAutomationEnabled: Boolean,
+    daylightBrightnessPercent: Int,
+    onDaylightAutomationChanged: (Boolean) -> Unit,
+    onDaylightBrightnessChanged: (Int) -> Unit,
+    onDaylightBrightnessCommitted: () -> Unit,
 ) {
     ScreenColumn(modifier) {
         item { AppHeader(sectionRes = R.string.nav_config, connectionState = connectionState) }
@@ -579,6 +606,16 @@ private fun ConfigScreen(
             VehicleAutomationCard(
                 enabled = vehicleAutomationEnabled,
                 onEnabledChanged = onVehicleAutomationChanged,
+            )
+        }
+        item {
+            DaylightAutomationCard(
+                signalActive = daylightSignalActive,
+                enabled = daylightAutomationEnabled,
+                brightnessPercent = daylightBrightnessPercent,
+                onEnabledChanged = onDaylightAutomationChanged,
+                onBrightnessChanged = onDaylightBrightnessChanged,
+                onBrightnessChangeFinished = onDaylightBrightnessCommitted,
             )
         }
     }
@@ -1763,6 +1800,100 @@ private fun VehicleAutomationCard(
                 uncheckedTrackColor = Color(0xFF30343B),
             ),
         )
+    }
+}
+
+@Composable
+private fun DaylightAutomationCard(
+    signalActive: Boolean,
+    enabled: Boolean,
+    brightnessPercent: Int,
+    onEnabledChanged: (Boolean) -> Unit,
+    onBrightnessChanged: (Int) -> Unit,
+    onBrightnessChangeFinished: () -> Unit,
+) {
+    val sliderDescription = stringResource(R.string.daylight_brightness_slider_description)
+    Card(
+        colors = CardDefaults.cardColors(containerColor = AppSurface),
+        border = BorderStroke(1.dp, AppLine),
+        shape = RoundedCornerShape(14.dp),
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .background(
+                            if (signalActive) Color(0xFF52D995) else Color(0xFF4A4F57),
+                            CircleShape,
+                        ),
+                )
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.daylight_signal_title), fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.daylight_signal_subtitle), color = AppMuted, fontSize = 11.sp)
+                }
+                Switch(
+                    checked = enabled,
+                    onCheckedChange = onEnabledChanged,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.Black,
+                        checkedTrackColor = AppOrange,
+                        uncheckedThumbColor = AppMuted,
+                        uncheckedTrackColor = Color(0xFF30343B),
+                    ),
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            HorizontalDivider(color = AppLine)
+            Spacer(Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.daylight_brightness_label),
+                        color = AppText,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        stringResource(
+                            if (signalActive) R.string.daylight_signal_active else R.string.daylight_signal_inactive,
+                        ),
+                        color = if (signalActive) Color(0xFF52D995) else AppMuted,
+                        fontSize = 10.sp,
+                    )
+                }
+                Text(
+                    text = "$brightnessPercent%",
+                    color = AppOrange,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Black,
+                )
+            }
+            Slider(
+                value = brightnessPercent.toFloat(),
+                onValueChange = { onBrightnessChanged((it / 5f).roundToInt() * 5) },
+                onValueChangeFinished = onBrightnessChangeFinished,
+                valueRange = 0f..100f,
+                steps = 19,
+                modifier = Modifier.semantics { contentDescription = sliderDescription },
+                colors = SliderDefaults.colors(
+                    thumbColor = AppOrange,
+                    activeTrackColor = AppOrange,
+                    inactiveTrackColor = Color(0xFF30343B),
+                ),
+            )
+            Text(
+                text = stringResource(R.string.daylight_event_hint),
+                color = AppMuted,
+                fontSize = 10.sp,
+                lineHeight = 14.sp,
+            )
+        }
     }
 }
 

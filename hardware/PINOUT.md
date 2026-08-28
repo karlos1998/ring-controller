@@ -30,15 +30,15 @@ All HW-153 `+` control pins connect to ESP32 3V3. All HW-153 `-` control pins co
 |---|---:|---|---|
 | Momentary button | 34 | active-low input | 10 kΩ pull-up to 3.3 V; button to GND |
 | Vehicle-signal optoisolator | 35 | active-low input | PC817 output powered at 3.3 V; module output pull-up or external 10 kΩ |
+| Daytime-light optoisolator | 36 (`VP`) | active-low input | Second PC817 output powered at 3.3 V; module output pull-up or external 10 kΩ |
 
-GPIO34 and GPIO35 are input-only and do not provide software-selectable internal pull-ups.
+GPIO34, GPIO35, and GPIO36 are input-only and do not provide software-selectable internal pull-ups.
 
 ## Pins intentionally avoided
 
 - GPIO0, GPIO2, GPIO5, GPIO12, GPIO15: boot-strapping behavior.
 - GPIO1 and GPIO3: USB serial TX/RX.
 - GPIO6–GPIO11: connected to module flash; never use.
-- GPIO36 and GPIO39 remain available as input-only expansion pins; they also lack internal pull-ups.
+- GPIO39 (`VN`) remains available as an input-only expansion pin; it also lacks an internal pull-up.
 
 Any change to this file must be mirrored in `firmware/include/PinMap.h` and the root `README.md`.
-

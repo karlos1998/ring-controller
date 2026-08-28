@@ -17,8 +17,8 @@ namespace {
 using ringcontroller::pins::RgbPins;
 
 constexpr char kDeviceName[] = "D4WID-Ring";
-constexpr char kFirmwareVersion[] = "0.4.1";
-constexpr char kProtocolVersion[] = "1.1";
+constexpr char kFirmwareVersion[] = "0.5.0";
+constexpr char kProtocolVersion[] = "1.2";
 constexpr char kServiceUuid[] = "7d2f0001-9c5a-4f28-b4d7-4b3a6d9a0001";
 constexpr char kCommandUuid[] = "7d2f0002-9c5a-4f28-b4d7-4b3a6d9a0001";
 constexpr char kStateUuid[] = "7d2f0003-9c5a-4f28-b4d7-4b3a6d9a0001";
@@ -43,6 +43,7 @@ constexpr uint16_t kMinimumCustomMomentDurationMs = 150;
 constexpr uint16_t kMaximumCustomMomentDurationMs = 5000;
 constexpr int8_t kNoScene = -1;
 constexpr int8_t kNoCustomScene = -1;
+constexpr uint8_t kDefaultDaylightBrightnessPercent = 50;
 
 enum class Scene : int8_t {
     AmberChase = 0,
@@ -144,11 +145,14 @@ private:
 Preferences preferences;
 DebouncedInput buttonInput(ringcontroller::pins::kMomentaryButton, true, kButtonDebounceMs);
 DebouncedInput vehicleSignalInput(ringcontroller::pins::kVehicleSignal, true, kVehicleSignalDebounceMs);
+DebouncedInput daylightSignalInput(ringcontroller::pins::kDaylightSignal, true, kVehicleSignalDebounceMs);
 
 bool userEnabled = true;
 bool vehicleAutomationEnabled = true;
+bool daylightAutomationEnabled = true;
 uint8_t forcedWhiteBrightness = 255;
 uint8_t globalBrightness = 224;
+uint8_t daylightBrightnessPercent = kDefaultDaylightBrightnessPercent;
 uint8_t favoriteColorIndex = 1;
 uint8_t favoriteCount = kDefaultFavoriteColors.size();
 int8_t activeScene = kNoScene;
@@ -179,6 +183,14 @@ uint8_t outputDuty(const uint8_t brightness) {
 uint8_t scaleChannel(const uint8_t value, const uint8_t brightness) {
     return static_cast<uint8_t>((static_cast<uint16_t>(value) * brightness + 127) / 255);
 }
+
+constexpr uint8_t brightnessFromPercent(const uint8_t percent) {
+    return static_cast<uint8_t>((static_cast<uint16_t>(percent) * 255U + 50U) / 100U);
+}
+
+static_assert(brightnessFromPercent(0) == 0, "Zero percent must turn PWM brightness off");
+static_assert(brightnessFromPercent(50) == 128, "Fifty percent must round to midpoint PWM");
+static_assert(brightnessFromPercent(100) == 255, "One hundred percent must use full PWM");
 
 RgbColor scaleColor(const RgbColor color, const uint8_t brightness) {
     return {
@@ -600,6 +612,12 @@ String buildControllerState() {
     }
     state += '|';
     state += String(static_cast<int>(activeCustomScene));
+    state += '|';
+    state += daylightSignalInput.isActive() ? '1' : '0';
+    state += '|';
+    state += daylightAutomationEnabled ? '1' : '0';
+    state += '|';
+    state += String(daylightBrightnessPercent);
     return state;
 }
 
@@ -759,6 +777,15 @@ void handleBleCommand(String message) {
     } else if (command == "VEHICLE") {
         vehicleAutomationEnabled = fieldAt(message, 1).toInt() != 0;
         preferences.putBool("veh-auto", vehicleAutomationEnabled);
+    } else if (command == "DAYLIGHT") {
+        daylightAutomationEnabled = fieldAt(message, 1).toInt() != 0;
+        daylightBrightnessPercent = static_cast<uint8_t>(constrain(fieldAt(message, 2).toInt(), 0, 100));
+        preferences.putBool("day-auto", daylightAutomationEnabled);
+        preferences.putUChar("day-level", daylightBrightnessPercent);
+        if (daylightAutomationEnabled && daylightSignalInput.isActive()) {
+            globalBrightness = brightnessFromPercent(daylightBrightnessPercent);
+            scheduleLightStatePersistence();
+        }
     } else if (command == "CUSTOM_BEGIN") {
         beginCustomSceneUpload(fieldAt(message, 1).toInt(), fieldAt(message, 2).toInt());
     } else if (command == "CUSTOM_STEP") {
@@ -840,6 +867,12 @@ void loadConfiguration() {
     preferences.begin("ringctrl", false);
     userEnabled = preferences.getBool("enabled", true);
     vehicleAutomationEnabled = preferences.getBool("veh-auto", true);
+    daylightAutomationEnabled = preferences.getBool("day-auto", true);
+    daylightBrightnessPercent = static_cast<uint8_t>(constrain(
+        preferences.getUChar("day-level", kDefaultDaylightBrightnessPercent),
+        static_cast<uint8_t>(0),
+        static_cast<uint8_t>(100)
+    ));
     forcedWhiteBrightness = preferences.getUChar("white", 255);
     globalBrightness = preferences.getUChar("brightness", 224);
     activeScene = preferences.getChar("scene", kNoScene);
@@ -936,6 +969,15 @@ void handleInputs(const uint32_t nowMs) {
         Serial.printf("Vehicle signal %s\n", vehicleSignalInput.isActive() ? "active" : "inactive");
         publishControllerState();
     }
+
+    if (daylightSignalInput.update(nowMs)) {
+        Serial.printf("Daylight signal %s\n", daylightSignalInput.isActive() ? "active" : "inactive");
+        if (daylightAutomationEnabled && daylightSignalInput.isActive()) {
+            globalBrightness = brightnessFromPercent(daylightBrightnessPercent);
+            scheduleLightStatePersistence();
+        }
+        publishControllerState();
+    }
 }
 
 }  // namespace
@@ -949,7 +991,12 @@ void setup() {
     applyAllRings({0, 0, 0});
     buttonInput.begin();
     vehicleSignalInput.begin();
+    daylightSignalInput.begin();
     loadConfiguration();
+    if (daylightAutomationEnabled && daylightSignalInput.isActive()) {
+        globalBrightness = brightnessFromPercent(daylightBrightnessPercent);
+        scheduleLightStatePersistence();
+    }
     beginBle();
 }
 
