@@ -17,7 +17,7 @@ namespace {
 using ringcontroller::pins::RgbPins;
 
 constexpr char kDeviceName[] = "D4WID-Ring";
-constexpr char kFirmwareVersion[] = "0.5.1";
+constexpr char kFirmwareVersion[] = "0.5.2";
 constexpr char kProtocolVersion[] = "1.2";
 constexpr char kServiceUuid[] = "7d2f0001-9c5a-4f28-b4d7-4b3a6d9a0001";
 constexpr char kCommandUuid[] = "7d2f0002-9c5a-4f28-b4d7-4b3a6d9a0001";
@@ -25,7 +25,10 @@ constexpr char kStateUuid[] = "7d2f0003-9c5a-4f28-b4d7-4b3a6d9a0001";
 constexpr char kInfoUuid[] = "7d2f0004-9c5a-4f28-b4d7-4b3a6d9a0001";
 
 constexpr uint32_t kSerialBaud = 115200;
-constexpr uint32_t kPwmFrequencyHz = 1000;
+// The inexpensive HW-153 optocoupler/IRF540 gate path is considerably slower
+// than a direct logic-level MOSFET driver. A 500 Hz carrier gives it a full
+// millisecond even at 50% duty while remaining visually flicker-free.
+constexpr uint32_t kPwmFrequencyHz = 500;
 constexpr uint8_t kPwmResolutionBits = 8;
 constexpr uint8_t kPwmMaximum = 255;
 constexpr bool kModuleInputActiveLow = false;

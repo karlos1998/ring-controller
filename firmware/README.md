@@ -4,7 +4,9 @@ PlatformIO/Arduino firmware for the classic ESP32-WROOM-32 30-pin DevKit.
 
 ## Current behavior
 
-- Configures all 15 planned PWM outputs at 1 kHz, 8-bit resolution.
+- Configures all 15 planned PWM outputs at 500 Hz, 8-bit resolution. The lower
+  carrier frequency gives the HW-153 optocoupler/IRF540 gate path more settling
+  time than the original 1 kHz prototype setting.
 - Displays the saved solid colors across four independently controlled rings.
 - Mirrors a uniform solid color and its global brightness on the reserved cabin RGB indicator pins.
 - Defaults to temporary bench mode with `kVehicleInputsConnected = false`, preventing floating, unwired GPIO35/GPIO36 inputs from triggering vehicle automations. Set it to `true` only after both PC817 outputs and their external 3.3 V pull-ups are installed and verified.

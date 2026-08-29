@@ -22,12 +22,14 @@ Canonical map for the 30-pin ESP32-WROOM-32 DevKit.
 | 13 | Cabin indicator | G | 22 | Driver pending | Pending |
 | 14 | Cabin indicator | B | 23 | Driver pending | Pending |
 
-On the tested HW-153 V1.1 board, connect each assigned ESP32 GPIO only to the
-corresponding `S` input. Leave the channel `+` and `-` pins disconnected.
-Connecting a channel `+` pin to ESP32 `3V3` collapsed the 3.3 V rail and must
-not be repeated. Before vehicle installation, identify those pins with
-unpowered continuity measurements against the other channels and the
-`M1+`/`M1-` terminals; do not infer their function from the printed symbols.
+On the tested HW-153 V1.1 board, connect each assigned ESP32 GPIO to the
+corresponding `S` input and connect one channel `-` pin per HW-153 board to
+ESP32 GND. Leave every channel `+` pin disconnected. The `-` connection gives
+the control signals a defined return; an `S`-only setup can switch through an
+incidental ground path but is not reliable. Connecting a channel `+` pin to
+ESP32 `3V3` collapsed the 3.3 V rail and must not be repeated. Confirm the
+common `-` bus with an unpowered continuity measurement before using only one
+ground connection per board.
 
 ## Inputs
 

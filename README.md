@@ -89,12 +89,12 @@ Every black control connector is marked `S + -`. On the tested HW-153 V1.1
 board, connecting a channel `+` pin to the ESP32 `3V3` pin collapsed the
 ESP32 3.3 V rail. Do not make that connection.
 
-The currently verified bench wiring is:
+The control wiring is:
 
 ```text
 S  → assigned ESP32 GPIO
 +  → not connected
--  → not connected
+-  → ESP32 GND
 ```
 
 The three channels for a ring are wired as follows:
@@ -105,14 +105,16 @@ ESP32 GPIO (green) → CH2 S     CH2 controls M3-
 ESP32 GPIO (blue)  → CH3 S     CH3 controls M4-
 
 CH1/CH2/CH3 + → not connected
-CH1/CH2/CH3 - → not connected
+One CH1/CH2/CH3 - per HW-153 board → ESP32 GND
 ```
 
-This `S`-only connection works on the current bench setup. Before changing
-it or installing the system in the vehicle, disconnect all power and use a
-multimeter to identify continuity between the channel `+`/`-` pins, between
-channels, and to the `M1+`/`M1-` power terminals. Never connect an
-unidentified channel pin to ESP32 `3V3`.
+The channel `-` pins are the control-signal return and are normally common on
+one board, so one verified `-` connection per HW-153 board is sufficient.
+An `S`-only bench setup can appear to work when it finds an incidental return
+path elsewhere, but it is not a defined control circuit and can produce
+unstable switching or channel crosstalk. Keep every channel `+` pin
+disconnected: on the tested HW-153 V1.1 board, connecting it to ESP32 `3V3`
+collapsed the 3.3 V rail.
 
 The 12 V side is low-side switched:
 
