@@ -17,7 +17,7 @@ namespace {
 using ringcontroller::pins::RgbPins;
 
 constexpr char kDeviceName[] = "D4WID-Ring";
-constexpr char kFirmwareVersion[] = "0.5.3";
+constexpr char kFirmwareVersion[] = "0.5.4";
 constexpr char kProtocolVersion[] = "1.2";
 constexpr char kServiceUuid[] = "7d2f0001-9c5a-4f28-b4d7-4b3a6d9a0001";
 constexpr char kCommandUuid[] = "7d2f0002-9c5a-4f28-b4d7-4b3a6d9a0001";
@@ -100,11 +100,13 @@ struct CustomSceneData {
 constexpr std::array<RgbColor, 6> kDefaultFavoriteColors{{
     {242, 246, 255},
     {255, 106, 0},
-    {255, 48, 78},
+    {255, 0, 0},
     {168, 85, 247},
     {0, 229, 229},
     {67, 224, 123},
 }};
+constexpr RgbColor kLegacyFavoriteRed{255, 48, 78};
+constexpr RgbColor kPureRed{255, 0, 0};
 constexpr RgbColor kButtonFallbackWhite{242, 246, 255};
 constexpr RgbColor kCabinWarningAmber{255, 106, 0};
 constexpr RgbColor kOff{0, 0, 0};
@@ -965,6 +967,32 @@ void loadConfiguration() {
         static_cast<uint8_t>(kMaximumFavorites)
     );
     favoriteColorIndex = preferences.getUChar("favorite", 1) % favoriteCount;
+
+    // Firmware versions up to 0.5.3 called #FF304E "red". That color still
+    // drives the green and blue channels, which makes rings with a stronger
+    // blue response look pink. Migrate the shipped preset and any currently
+    // selected copy once, while preserving every other user-defined color.
+    if (!preferences.getBool("pure-red-v1", false)) {
+        bool favoritesChanged = false;
+        for (uint8_t index = 0; index < favoriteCount; ++index) {
+            if (colorsEqual(favoriteColors[index], kLegacyFavoriteRed)) {
+                favoriteColors[index] = kPureRed;
+                favoritesChanged = true;
+            }
+        }
+
+        bool ringColorsChanged = false;
+        for (RgbColor &color : ringColors) {
+            if (colorsEqual(color, kLegacyFavoriteRed)) {
+                color = kPureRed;
+                ringColorsChanged = true;
+            }
+        }
+
+        if (favoritesChanged) persistFavorites();
+        if (ringColorsChanged) persistLightState();
+        preferences.putBool("pure-red-v1", true);
+    }
     sceneStartedAtMs = millis();
 }
 

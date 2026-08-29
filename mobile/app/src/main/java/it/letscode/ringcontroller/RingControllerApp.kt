@@ -122,7 +122,7 @@ private enum class DashboardTab(
 private val defaultFavoriteColors = listOf(
     Color(0xFFF2F6FF),
     Color(0xFFFF6A00),
-    Color(0xFFFF304E),
+    Color(0xFFFF0000),
     Color(0xFFA855F7),
     AppCyan,
     Color(0xFF43E07B),
