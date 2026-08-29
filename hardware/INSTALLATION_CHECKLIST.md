@@ -9,6 +9,8 @@
 - [ ] Disconnect/reconnect restores the authoritative ESP32 state instead of stale app values.
 - [ ] Ring common-positive wiring verified with a meter.
 - [ ] HW-153 output-positive bus continuity verified while unpowered.
+- [ ] With all power disconnected, HW-153 channel `+` and `-` continuity to the other channels and to `M1+`/`M1-` documented.
+- [ ] HW-153 channel `+` and `-` remain disconnected from ESP32; only each `S` input is connected to its assigned GPIO.
 - [ ] One ring tested from a current-limited bench supply.
 - [ ] R/G/B mapping confirmed and documented.
 - [ ] Outputs remain off during ESP32 reset and firmware upload.
