@@ -17,7 +17,7 @@ namespace {
 using ringcontroller::pins::RgbPins;
 
 constexpr char kDeviceName[] = "D4WID-Ring";
-constexpr char kFirmwareVersion[] = "0.5.2";
+constexpr char kFirmwareVersion[] = "0.5.3";
 constexpr char kProtocolVersion[] = "1.2";
 constexpr char kServiceUuid[] = "7d2f0001-9c5a-4f28-b4d7-4b3a6d9a0001";
 constexpr char kCommandUuid[] = "7d2f0002-9c5a-4f28-b4d7-4b3a6d9a0001";
@@ -25,10 +25,7 @@ constexpr char kStateUuid[] = "7d2f0003-9c5a-4f28-b4d7-4b3a6d9a0001";
 constexpr char kInfoUuid[] = "7d2f0004-9c5a-4f28-b4d7-4b3a6d9a0001";
 
 constexpr uint32_t kSerialBaud = 115200;
-// The inexpensive HW-153 optocoupler/IRF540 gate path is considerably slower
-// than a direct logic-level MOSFET driver. A 500 Hz carrier gives it a full
-// millisecond even at 50% duty while remaining visually flicker-free.
-constexpr uint32_t kPwmFrequencyHz = 500;
+constexpr uint32_t kPwmFrequencyHz = 1000;
 constexpr uint8_t kPwmResolutionBits = 8;
 constexpr uint8_t kPwmMaximum = 255;
 constexpr bool kModuleInputActiveLow = false;
@@ -183,6 +180,7 @@ bool bleConnected = false;
 bool lightStatePersistencePending = false;
 uint32_t lightStateChangedAtMs = 0;
 BLECharacteristic *stateCharacteristic = nullptr;
+std::array<bool, ringcontroller::pins::kPwmOutputs.size()> pwmOutputAttached{};
 
 uint8_t outputDuty(const uint8_t brightness) {
     return kModuleInputActiveLow ? static_cast<uint8_t>(kPwmMaximum - brightness) : brightness;
@@ -230,30 +228,69 @@ static_assert(!cabinWarningPulseOn(150), "Cabin warning separates the flashes");
 static_assert(cabinWarningPulseOn(300), "Cabin warning contains a second flash");
 static_assert(!cabinWarningPulseOn(500), "Cabin warning pauses after the double flash");
 
+int8_t pwmOutputIndex(const uint8_t pin) {
+    for (size_t index = 0; index < ringcontroller::pins::kPwmOutputs.size(); ++index) {
+        if (ringcontroller::pins::kPwmOutputs[index] == pin) return static_cast<int8_t>(index);
+    }
+    return -1;
+}
+
 void attachPwmOutputs() {
     for (size_t index = 0; index < ringcontroller::pins::kPwmOutputs.size(); ++index) {
         const uint8_t pin = ringcontroller::pins::kPwmOutputs[index];
 #if ESP_ARDUINO_VERSION_MAJOR >= 3
-        if (!ledcAttach(pin, kPwmFrequencyHz, kPwmResolutionBits)) {
+        pwmOutputAttached[index] = ledcAttach(pin, kPwmFrequencyHz, kPwmResolutionBits);
+        if (!pwmOutputAttached[index]) {
             Serial.printf("Failed to attach LEDC to GPIO%u\n", pin);
         }
 #else
         ledcSetup(index, kPwmFrequencyHz, kPwmResolutionBits);
         ledcAttachPin(pin, index);
+        pwmOutputAttached[index] = true;
 #endif
     }
 }
 
 void writePwm(const uint8_t pin, const uint8_t brightness) {
     const uint8_t duty = outputDuty(brightness);
+    const int8_t signedIndex = pwmOutputIndex(pin);
+    if (signedIndex < 0) return;
+    const size_t index = static_cast<size_t>(signedIndex);
+
+    // A hardware test showed that this HW-153/ring combination renders a pure
+    // endpoint correctly with a static GPIO but not while LEDC owns the pin.
+    // Detaching LEDC at 0% and 100% makes those states electrically identical
+    // to digitalWrite(LOW/HIGH); intermediate values still use hardware PWM.
+    if (duty == 0 || duty == kPwmMaximum) {
+        if (pwmOutputAttached[index]) {
 #if ESP_ARDUINO_VERSION_MAJOR >= 3
-    ledcWrite(pin, duty);
+            ledcDetach(pin);
 #else
-    for (size_t index = 0; index < ringcontroller::pins::kPwmOutputs.size(); ++index) {
-        if (ringcontroller::pins::kPwmOutputs[index] == pin) {
-            ledcWrite(index, duty);
+            ledcDetachPin(pin);
+#endif
+            pwmOutputAttached[index] = false;
+        }
+        pinMode(pin, OUTPUT);
+        digitalWrite(pin, duty == kPwmMaximum ? HIGH : LOW);
+        return;
+    }
+
+#if ESP_ARDUINO_VERSION_MAJOR >= 3
+    if (!pwmOutputAttached[index]) {
+        pwmOutputAttached[index] = ledcAttach(pin, kPwmFrequencyHz, kPwmResolutionBits);
+        if (!pwmOutputAttached[index]) {
+            Serial.printf("Failed to reattach LEDC to GPIO%u\n", pin);
             return;
         }
+    }
+    ledcWrite(pin, duty);
+#else
+    if (!pwmOutputAttached[index]) {
+        ledcWrite(index, duty);
+        ledcAttachPin(pin, index);
+        pwmOutputAttached[index] = true;
+    } else {
+        ledcWrite(index, duty);
     }
 #endif
 }
