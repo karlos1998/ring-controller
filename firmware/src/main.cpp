@@ -17,7 +17,7 @@ namespace {
 using ringcontroller::pins::RgbPins;
 
 constexpr char kDeviceName[] = "D4WID-Ring";
-constexpr char kFirmwareVersion[] = "0.5.0";
+constexpr char kFirmwareVersion[] = "0.5.1";
 constexpr char kProtocolVersion[] = "1.2";
 constexpr char kServiceUuid[] = "7d2f0001-9c5a-4f28-b4d7-4b3a6d9a0001";
 constexpr char kCommandUuid[] = "7d2f0002-9c5a-4f28-b4d7-4b3a6d9a0001";
@@ -32,6 +32,11 @@ constexpr bool kModuleInputActiveLow = false;
 constexpr uint32_t kButtonDebounceMs = 40;
 constexpr uint32_t kButtonLongPressMs = 850;
 constexpr uint32_t kVehicleSignalDebounceMs = 250;
+// Temporary bench mode: GPIO35 and GPIO36 are left physically unconnected until
+// the PC817 modules arrive. Keep them ignored so floating inputs cannot trigger
+// the forced-white or daytime-brightness automations. Change this to true after
+// both inputs have verified external 3.3 V pull-ups and optoisolator wiring.
+constexpr bool kVehicleInputsConnected = false;
 constexpr uint32_t kRenderIntervalMs = 15;
 constexpr uint32_t kCabinWarningCycleMs = 1700;
 constexpr uint32_t kCabinWarningFlashMs = 140;
@@ -504,7 +509,7 @@ std::array<RgbColor, 4> customSceneColors(const uint32_t nowMs) {
 }
 
 void renderOutputs(const uint32_t nowMs) {
-    if (vehicleAutomationEnabled && vehicleSignalInput.isActive()) {
+    if (kVehicleInputsConnected && vehicleAutomationEnabled && vehicleSignalInput.isActive()) {
         applyAllRings({forcedWhiteBrightness, forcedWhiteBrightness, forcedWhiteBrightness});
     } else if (!userEnabled) {
         applyAllRings({0, 0, 0});
@@ -595,9 +600,9 @@ String buildControllerState() {
     state += '|';
     state += String(static_cast<int>(activeScene));
     state += '|';
-    state += (vehicleAutomationEnabled && vehicleSignalInput.isActive()) ? '1' : '0';
+    state += (kVehicleInputsConnected && vehicleAutomationEnabled && vehicleSignalInput.isActive()) ? '1' : '0';
     state += '|';
-    state += vehicleSignalInput.isActive() ? '1' : '0';
+    state += (kVehicleInputsConnected && vehicleSignalInput.isActive()) ? '1' : '0';
     state += '|';
     state += vehicleAutomationEnabled ? '1' : '0';
     state += '|';
@@ -613,7 +618,7 @@ String buildControllerState() {
     state += '|';
     state += String(static_cast<int>(activeCustomScene));
     state += '|';
-    state += daylightSignalInput.isActive() ? '1' : '0';
+    state += (kVehicleInputsConnected && daylightSignalInput.isActive()) ? '1' : '0';
     state += '|';
     state += daylightAutomationEnabled ? '1' : '0';
     state += '|';
@@ -782,7 +787,7 @@ void handleBleCommand(String message) {
         daylightBrightnessPercent = static_cast<uint8_t>(constrain(fieldAt(message, 2).toInt(), 0, 100));
         preferences.putBool("day-auto", daylightAutomationEnabled);
         preferences.putUChar("day-level", daylightBrightnessPercent);
-        if (daylightAutomationEnabled && daylightSignalInput.isActive()) {
+        if (kVehicleInputsConnected && daylightAutomationEnabled && daylightSignalInput.isActive()) {
             globalBrightness = brightnessFromPercent(daylightBrightnessPercent);
             scheduleLightStatePersistence();
         }
@@ -965,12 +970,12 @@ void handleInputs(const uint32_t nowMs) {
         publishControllerState();
     }
 
-    if (vehicleSignalInput.update(nowMs)) {
+    if (kVehicleInputsConnected && vehicleSignalInput.update(nowMs)) {
         Serial.printf("Vehicle signal %s\n", vehicleSignalInput.isActive() ? "active" : "inactive");
         publishControllerState();
     }
 
-    if (daylightSignalInput.update(nowMs)) {
+    if (kVehicleInputsConnected && daylightSignalInput.update(nowMs)) {
         Serial.printf("Daylight signal %s\n", daylightSignalInput.isActive() ? "active" : "inactive");
         if (daylightAutomationEnabled && daylightSignalInput.isActive()) {
             globalBrightness = brightnessFromPercent(daylightBrightnessPercent);
@@ -990,10 +995,12 @@ void setup() {
     attachPwmOutputs();
     applyAllRings({0, 0, 0});
     buttonInput.begin();
-    vehicleSignalInput.begin();
-    daylightSignalInput.begin();
+    if (kVehicleInputsConnected) {
+        vehicleSignalInput.begin();
+        daylightSignalInput.begin();
+    }
     loadConfiguration();
-    if (daylightAutomationEnabled && daylightSignalInput.isActive()) {
+    if (kVehicleInputsConnected && daylightAutomationEnabled && daylightSignalInput.isActive()) {
         globalBrightness = brightnessFromPercent(daylightBrightnessPercent);
         scheduleLightStatePersistence();
     }

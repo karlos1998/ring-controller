@@ -2,7 +2,7 @@
 
 Android-controlled RGB halo-ring controller for a pre-facelift 2013 Dodge Challenger. The system replaces an unreliable aftermarket RGB controller with an ESP32-based controller, independently drives four 12 V common-anode RGB rings, mirrors the active color inside the cabin, and reacts locally to two isolated 12 V vehicle signals.
 
-> **Project status:** buildable ESP32 firmware and Android dashboard with protocol-1.2 BLE control. The firmware provides independent ring colors, 20 built-in scenes, eight durable user-designed scene slots, editable favorite-color cycling, short/long physical-button handling, a forced-white vehicle-input override, and a configurable daytime-light brightness trigger. Bench and in-vehicle hardware validation are still required.
+> **Project status:** buildable ESP32 firmware and Android dashboard with protocol-1.2 BLE control. The firmware provides independent ring colors, 20 built-in scenes, eight durable user-designed scene slots, editable favorite-color cycling, short/long physical-button handling, a forced-white vehicle-input override, and a configurable daytime-light brightness trigger. The current firmware source defaults to temporary bench mode (`kVehicleInputsConnected = false`), which ignores the still-unwired GPIO35/GPIO36 inputs until both PC817 modules and external pull-ups are installed. Bench and in-vehicle hardware validation are still required.
 
 ## Repository layout
 

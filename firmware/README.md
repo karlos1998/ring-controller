@@ -7,6 +7,7 @@ PlatformIO/Arduino firmware for the classic ESP32-WROOM-32 30-pin DevKit.
 - Configures all 15 planned PWM outputs at 1 kHz, 8-bit resolution.
 - Displays the saved solid colors across four independently controlled rings.
 - Mirrors a uniform solid color and its global brightness on the reserved cabin RGB indicator pins.
+- Defaults to temporary bench mode with `kVehicleInputsConnected = false`, preventing floating, unwired GPIO35/GPIO36 inputs from triggering vehicle automations. Set it to `true` only after both PC817 outputs and their external 3.3 V pull-ups are installed and verified.
 - Replaces the cabin preview with a repeating full-brightness amber double flash whenever solid ring colors differ or a built-in/custom scene is active.
 - A short button press stops any scene or mixed-color state and forces fallback ice white across all four rings; subsequent presses advance through the durable favorites. When a uniform solid color was merely off, the first press restores it.
 - Holding the button for 850 ms turns the user lighting off.
