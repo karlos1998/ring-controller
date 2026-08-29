@@ -61,6 +61,11 @@ internal object BleProtocol {
 
     fun color(target: Int?, color: Color): String = "COLOR|${target ?: 255}|${color.toHex().drop(1)}"
 
+    fun colorAndBrightness(target: Int?, color: Color, brightnessValue: Float): List<String> = listOf(
+        color(target, color),
+        brightness(brightnessValue),
+    )
+
     fun scene(index: Int?): String = "SCENE|${index ?: -1}"
 
     fun favorites(colors: List<Color>): String =

@@ -353,8 +353,7 @@ internal fun RingControllerApp(
                     favoriteColors = draftFavorites
                     brightness = draftBrightness
                     if (favoritesChanged) bleManager?.setFavorites(draftFavorites)
-                    bleManager?.setColor(selectedRing, committedColor)
-                    bleManager?.setBrightness(draftBrightness)
+                    bleManager?.setColorAndBrightness(selectedRing, committedColor, draftBrightness)
                     colorEditorOpen = false
                 },
             )

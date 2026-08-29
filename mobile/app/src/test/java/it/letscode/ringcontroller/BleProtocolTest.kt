@@ -36,6 +36,10 @@ class BleProtocolTest {
 
         assertEquals("COLOR|2|FF304E", BleProtocol.color(2, red))
         assertEquals("COLOR|255|FF304E", BleProtocol.color(null, red))
+        assertEquals(
+            listOf("COLOR|255|FF304E", "BRIGHTNESS|127"),
+            BleProtocol.colorAndBrightness(null, red, 0.5f),
+        )
     }
 
     @Test

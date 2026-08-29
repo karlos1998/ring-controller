@@ -129,6 +129,9 @@ internal class RingBleManager(private val context: Context) {
 
     fun setColor(target: Int?, color: Color) = writeCommand(BleProtocol.color(target, color))
 
+    fun setColorAndBrightness(target: Int?, color: Color, brightness: Float) =
+        enqueueCommands(BleProtocol.colorAndBrightness(target, color, brightness))
+
     fun setScene(index: Int?) = writeCommand(BleProtocol.scene(index), immediate = true)
 
     fun setFavorites(colors: List<Color>) = writeCommand(BleProtocol.favorites(colors), immediate = true)
